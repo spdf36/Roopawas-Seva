@@ -250,6 +250,15 @@ export type Account = {
 
 export const isStaff = (a: { role: Role } | null | undefined) => a?.role === 'admin' || a?.role === 'superadmin';
 
+/** Login IDs are matched case-insensitively and without spaces (mobile numbers are typed with gaps). */
+export const normaliseLoginId = (v: string) => v.replace(/\s+/g, '').toLowerCase();
+
+/** An Indian mobile number: 10 digits starting with 6–9. */
+export const isMobile = (v: string) => /^[6-9]\d{9}$/.test(v);
+export const isPin = (v: string) => /^\d{4}$/.test(v);
+/** A staff user ID, already normalised: 3–20 characters, starting with a letter (a-z, 0-9, . _ -). */
+export const isStaffLoginId = (v: string) => /^[a-z][a-z0-9._-]{2,19}$/.test(v);
+
 export const ROLE_NAME: Record<Role, L> = {
   citizen: l('नागरिक', 'Citizen'),
   admin: l('प्रशासक', 'Admin'),

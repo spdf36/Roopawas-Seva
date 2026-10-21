@@ -1,7 +1,8 @@
 import { Api, ApiError, MAX_PHOTO_BYTES, NewNotice, SchemeInput, User, WorkInput } from '@shared/api';
 import {
   Account, BASELINE_FIELDS, Baseline, CATEGORIES, Coords, DEPARTMENTS, DevelopmentWork, L, NOTICE_TAGS, Notice, REOPEN_STATUS, Request, Role,
-  SCHEME_GROUPS, Scheme, TAG_VISUAL, canReopen, isStaff, matchesFilter, nextStatuses, updatedAt,
+  SCHEME_GROUPS, Scheme, TAG_VISUAL, canReopen, isMobile, isPin, isStaff, isStaffLoginId, matchesFilter, nextStatuses, normaliseLoginId,
+  updatedAt,
 } from '@shared/data';
 import {
   FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS,
@@ -66,9 +67,6 @@ const fail = (status: number, code: ApiError['code']): never => {
 };
 
 const toUser = ({ pin: _pin, ...user }: Account): User => user;
-const normaliseLoginId = (v: string) => v.replace(/\s+/g, '').toLowerCase();
-const isMobile = (v: string) => /^[6-9]\d{9}$/.test(v);
-const isPin = (v: string) => /^\d{4}$/.test(v);
 const filled = (v: L) => !!v.hi.trim();
 /** Trims bilingual text; a blank English text falls back to the Hindi one. */
 const bilingual = (v: L): L => ({ hi: v.hi.trim(), en: v.en.trim() || v.hi.trim() });
@@ -429,7 +427,7 @@ export function createMockApi(getToken: () => string | null): Api {
       call((db) => {
         auth(db, ['superadmin']);
         const key = normaliseLoginId(loginId);
-        if (!name.trim() || !designation || !/^[a-z][a-z0-9._-]{2,19}$/.test(key) || !isMobile(mobile) || !isPin(pin)) return fail(400, 'invalid');
+        if (!name.trim() || !designation || !isStaffLoginId(key) || !isMobile(mobile) || !isPin(pin)) return fail(400, 'invalid');
         if (db.accounts.some((a) => normaliseLoginId(a.loginId) === key)) return fail(409, 'exists');
         const acc: Account = { id: `u-${Date.now()}`, role: 'admin', name: name.trim(), loginId: key, pin, mobile, designation, active: true, createdAt: Date.now() };
         db.accounts.push(acc);

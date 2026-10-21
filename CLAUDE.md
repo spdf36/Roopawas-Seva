@@ -57,6 +57,7 @@ npm run build        # typecheck + production build
 
 # Backend (needs server/.env – copy server/.env.example)
 cd server && npm install
+npm run seed         # demo sample data (DEMO_MODE=true); `npm run setup` for a real database
 npm run dev          # http://localhost:4000, restarts on changes
 npm run typecheck
 

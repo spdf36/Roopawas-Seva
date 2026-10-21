@@ -17,12 +17,21 @@ export const config = {
   port: Number(env.PORT ?? 4000),
   /** MongoDB Atlas connection string. */
   mongoUri: () => required('MONGODB_URI'),
+  /** Database inside the cluster (Atlas connection strings often name none). */
+  mongoDb: env.MONGODB_DB?.trim() || 'roopawas-seva',
   /** Where uploaded photos are stored. Must be on a persistent disk in production. */
   uploadsDir: path.resolve(import.meta.dirname, '..', env.UPLOADS_DIR ?? 'uploads'),
   /** Website origins allowed to call the API (comma-separated). */
   webOrigins: (env.WEB_ORIGIN ?? 'http://localhost:5173').split(',').map((o) => o.trim()).filter(Boolean),
   /** Enables the demo logins and the reset endpoint. Never set in a real deployment. */
   demoMode: env.DEMO_MODE === 'true',
+  /** The first super admin, created by `npm run setup` when the database has none. */
+  superAdmin: () => ({
+    loginId: required('SUPERADMIN_LOGIN'),
+    pin: required('SUPERADMIN_PIN'),
+    name: required('SUPERADMIN_NAME'),
+    mobile: required('SUPERADMIN_MOBILE'),
+  }),
 };
 
 if (!Number.isInteger(config.port) || config.port <= 0) throw new Error(`PORT must be a positive whole number, got "${env.PORT}".`);

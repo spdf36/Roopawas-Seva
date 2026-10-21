@@ -2,6 +2,7 @@ import { ApiError } from '@shared/api';
 import cors from 'cors';
 import express, { ErrorRequestHandler } from 'express';
 import { config } from './config';
+import { dbReady } from './db';
 
 /** The Express app, without starting a server, so it can also be used in tests. */
 export function createApp() {
@@ -12,8 +13,10 @@ export function createApp() {
   // Photos arrive as compressed data: URLs inside JSON (at most MAX_PHOTO_BYTES), so allow a bit more than that.
   app.use(express.json({ limit: '1mb' }));
 
+  // For uptime checks: 503 while the database connection is down.
   app.get('/health', (_req, res) => {
-    res.json({ ok: true, demoMode: config.demoMode });
+    const db = dbReady();
+    res.status(db ? 200 : 503).json({ ok: db, db: db ? 'connected' : 'disconnected', demoMode: config.demoMode });
   });
 
   // Unknown routes answer like any other API error.
