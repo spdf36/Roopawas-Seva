@@ -3,11 +3,12 @@ import { Banner } from '../components/Art';
 import { Icon, tint } from '../components/ui';
 import { FLOW, Icon as IconName, L, STATUS, l } from '../data';
 import { useVillageStats } from '../stats';
-import { useStore, useT } from '../store';
+import { useStore, useT, useUser } from '../store';
+import { isStaff } from '../data';
 import { C } from '../theme';
 
 const TILES: { to: string; icon: IconName; color: string; hi: string; en: string }[] = [
-  { to: '/register', icon: 'account', color: C.green, hi: 'मेरी जानकारी', en: 'My Profile' },
+  { to: '/profile', icon: 'account', color: C.green, hi: 'मेरी जानकारी', en: 'My Profile' },
   { to: '/schemes', icon: 'bank', color: C.orange, hi: 'योजनाएँ', en: 'Government Schemes' },
   { to: '/complaint', icon: 'bullhorn', color: C.red, hi: 'मेरी समस्या', en: 'Complaint / Request' },
   { to: '/updates', icon: 'bell-ring', color: C.purple, hi: 'सूचनाएँ', en: 'Latest Updates' },
@@ -57,7 +58,8 @@ const PLEDGE: { color: string; title: L; note: L }[] = [
 
 export function Home() {
   const { t, tl, lang } = useT();
-  const profile = useStore((s) => s.profile);
+  const profile = useUser();
+  const staff = isStaff(profile);
   const notices = useStore((s) => s.notices);
   const st = useVillageStats();
 
@@ -75,11 +77,17 @@ export function Home() {
               )}
             </p>
             <div className="row wrap">
-              <Link to="/complaint" className="btn" style={tint('var(--orange)')}><Icon name="bullhorn" />{t('शिकायत दर्ज करें', 'Raise a complaint')}</Link>
-              <Link to={profile ? '/schemes' : '/register'} className="btn outline" style={tint('var(--green)')}>
-                <Icon name={profile ? 'bank' : 'account-plus'} />
-                {profile ? t('मेरे लिए योजनाएँ', 'Schemes for me') : t('पंजीकरण करें', 'Register')}
-              </Link>
+              {staff ? (
+                <Link to="/admin" className="btn" style={tint('var(--navy)')}><Icon name="view-dashboard-outline" />{t('प्रशासक डैशबोर्ड', 'Admin dashboard')}</Link>
+              ) : (
+                <>
+                  <Link to="/complaint" className="btn" style={tint('var(--orange)')}><Icon name="bullhorn" />{t('शिकायत दर्ज करें', 'Raise a complaint')}</Link>
+                  <Link to={profile ? '/schemes' : '/login'} className="btn outline" style={tint('var(--green)')}>
+                    <Icon name={profile ? 'bank' : 'login'} />
+                    {profile ? t('मेरे लिए योजनाएँ', 'Schemes for me') : t('लॉगिन / पंजीकरण', 'Log in / Register')}
+                  </Link>
+                </>
+              )}
             </div>
             <p style={{ marginTop: 22 }}><span className="motto">{t('“साथ मिलकर, बेहतर रूपावास”', '“Together, a better Roopawas”')}</span></p>
           </div>

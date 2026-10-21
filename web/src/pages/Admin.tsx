@@ -1,55 +1,29 @@
 import { useMemo, useState } from 'react';
-import { NavLink, Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { Badge, Chips, Empty, Field, Icon, PageHead, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint } from '../components/ui';
 import {
-  CATEGORIES, DEPARTMENTS, DEVELOPMENT_WORKS, FLOW, Icon as IconName, NOTICE_TAGS, NoticeTag, OCCUPATIONS, SEED_USERS,
-  STATUS, Status, WARDS, fmtDate,
+  CATEGORIES, DEPARTMENTS, DESIGNATIONS, DEVELOPMENT_WORKS, FLOW, Icon as IconName, L, NOTICE_TAGS, NoticeTag, OCCUPATIONS, ROLE_NAME,
+  SEED_ACCOUNTS, STATUS, Status, WARDS, fmtDate,
 } from '../data';
 import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
 import { useVillageStats } from '../stats';
-import { ADMIN_PIN, ADMIN_USER, useStore, useT } from '../store';
+import { NewAdmin, useStore, useT, useUser } from '../store';
 
 const isOpen = (s: Status) => s !== 'resolved' && s !== 'rejected';
 
-export function AdminLogin() {
-  const { t } = useT();
-  const navigate = useNavigate();
-  const isAdmin = useStore((s) => s.isAdmin);
-  const adminLogin = useStore((s) => s.adminLogin);
-  const [user, setUser] = useState('');
-  const [pin, setPin] = useState('');
-  const [error, setError] = useState(false);
-
-  if (isAdmin) return <Navigate to="/admin" replace />;
-
-  return (
-    <div className="container page" style={{ maxWidth: 440 }}>
-      <form className="card stack" onSubmit={(e) => { e.preventDefault(); if (adminLogin(user, pin)) navigate('/admin'); else setError(true); }}>
-        <div className="center">
-          <span className="bubble" style={{ width: 76, height: 76, background: 'var(--blue-soft)' }}><Icon name="account-tie" size={44} color="var(--navy)" /></span>
-          <h2 style={{ marginTop: 6 }}>{t('मुखिया / प्रशासक लॉगिन', 'Sarpanch / Admin Login')}</h2>
-        </div>
-        <Field label={t('यूज़र आईडी', 'User ID')} required icon="account" value={user} autoCapitalize="none" placeholder={ADMIN_USER} onChange={(e) => { setUser(e.target.value); setError(false); }} />
-        <Field label={t('पिन', 'PIN')} required icon="lock-outline" type="password" inputMode="numeric" maxLength={4} value={pin} placeholder="••••" onChange={(e) => { setPin(e.target.value.replace(/\D/g, '').slice(0, 4)); setError(false); }} />
-        {error ? <div className="error">{t('यूज़र आईडी या पिन गलत है।', 'Incorrect user ID or PIN.')}</div> : null}
-        <button type="submit" className="btn block" style={tint('var(--navy)')}><Icon name="login" />{t('लॉगिन करें', 'Log in')}</button>
-        <div className="demo-hint">{t('डेमो लॉगिन', 'Demo login')}:  <b>{ADMIN_USER}</b>  /  <b>{ADMIN_PIN}</b></div>
-      </form>
-    </div>
-  );
-}
-
+/** Staff area shell. Access is checked by the route guard in App.tsx. */
 export function AdminLayout() {
-  const { t } = useT();
+  const { t, tl } = useT();
   const navigate = useNavigate();
-  const isAdmin = useStore((s) => s.isAdmin);
-  const adminLogout = useStore((s) => s.adminLogout);
+  const user = useUser();
+  const logout = useStore((s) => s.logout);
   const fresh = useStore((s) => s.requests.filter((r) => r.status === 'submitted').length);
-
-  if (!isAdmin) return <Navigate to="/admin/login" replace />;
+  const isSuper = user?.role === 'superadmin';
+  const designation = DESIGNATIONS.find((d) => d.id === user?.designation);
 
   const menu: { to: string; icon: IconName; label: string; count?: number; end?: boolean }[] = [
     { to: '/admin', end: true, icon: 'view-dashboard-outline', label: t('डैशबोर्ड', 'Dashboard') },
+    ...(isSuper ? [{ to: '/admin/admins', icon: 'shield-account', label: t('एडमिन प्रबंधन', 'Admin management') }] : []),
     { to: '/admin/requests', icon: 'file-document-multiple-outline', label: t('सभी आवेदन देखें', 'View all applications'), count: fresh },
     { to: '/admin/reports', icon: 'file-chart-outline', label: t('विभागवार रिपोर्ट & Analytics', 'Reports & Analytics') },
     { to: '/admin/plan', icon: 'target', label: t('ग्राम विकास योजना', 'Village development plan') },
@@ -61,10 +35,13 @@ export function AdminLayout() {
     <div className="container page admin">
       <aside className="card admin-side">
         <div className="row" style={{ padding: '4px 6px 12px' }}>
-          <span className="bubble" style={{ width: 46, height: 46, background: 'var(--blue-soft)' }}><Icon name="account-tie" size={28} color="var(--navy)" /></span>
+          <span className="bubble" style={{ width: 46, height: 46, background: isSuper ? '#f0e6fa' : 'var(--blue-soft)' }}>
+            <Icon name={isSuper ? 'shield-crown' : 'account-tie'} size={28} color={isSuper ? 'var(--purple)' : 'var(--navy)'} />
+          </span>
           <div>
-            <b style={{ color: 'var(--navy)' }}>{t('मुखिया / प्रशासक', 'Sarpanch / Admin')}</b>
-            <div className="tiny sub">{t('ग्राम पंचायत रूपावास', 'Gram Panchayat Roopawas')}</div>
+            <b style={{ color: 'var(--navy)' }}>{user?.name}</b>
+            <div className="tiny sub">{designation ? tl(designation.name) : ''}</div>
+            {user ? <Badge label={tl(ROLE_NAME[user.role])} color={isSuper ? 'var(--purple)' : 'var(--blue)'} soft={isSuper ? '#f0e6fa' : 'var(--blue-soft)'} /> : null}
           </div>
         </div>
         {menu.map((m) => (
@@ -72,7 +49,7 @@ export function AdminLayout() {
             <Icon name={m.icon} />{m.label}{m.count ? <span className="count">{m.count}</span> : null}
           </NavLink>
         ))}
-        <button className="btn sm outline block" style={{ ...tint('var(--red)'), marginTop: 12 }} onClick={() => { adminLogout(); navigate('/'); }}>
+        <button className="btn sm outline block" style={{ ...tint('var(--red)'), marginTop: 12 }} onClick={() => { logout(); navigate('/'); }}>
           <Icon name="logout" size={17} />{t('लॉग आउट', 'Log out')}
         </button>
       </aside>
@@ -307,33 +284,42 @@ export function AdminPlan() {
   );
 }
 
+const SEEDED = new Set(SEED_ACCOUNTS.map((a) => a.id));
+
 export function AdminUsers() {
   const { t, tl } = useT();
-  const profile = useStore((s) => s.profile);
+  const accounts = useStore((s) => s.accounts);
   const requests = useStore((s) => s.requests);
-  const users = [
-    ...(profile ? [{ name: profile.name, mobile: profile.mobile, occupation: profile.occupation, ward: profile.ward, fresh: true }] : []),
-    ...SEED_USERS.filter((u) => u.mobile !== profile?.mobile).map((u) => ({ ...u, fresh: false })),
-  ];
-  const label = (list: typeof OCCUPATIONS, id: string) => {
+  const setAccountActive = useStore((s) => s.setAccountActive);
+  const citizens = accounts.filter((a) => a.role === 'citizen').sort((a, b) => b.createdAt - a.createdAt);
+  const label = (list: { id: string; name: L }[], id?: string) => {
     const hit = list.find((o) => o.id === id);
     return hit ? tl(hit.name) : '—';
   };
 
   return (
     <>
-      <PageHead icon="account-multiple-outline" title={t('उपयोगकर्ता प्रबंधन', 'User Management')} subtitle={t(`${users.length} पंजीकृत नागरिक`, `${users.length} registered citizens`)} />
+      <PageHead icon="account-multiple-outline" title={t('उपयोगकर्ता प्रबंधन', 'User Management')} subtitle={t(`${citizens.length} पंजीकृत नागरिक`, `${citizens.length} registered citizens`)} />
       <div className="card table-wrap" style={{ padding: 0 }}>
         <table>
-          <thead><tr><th>{t('नाम', 'Name')}</th><th>{t('मोबाइल', 'Mobile')}</th><th>{t('पेशा', 'Occupation')}</th><th>{t('वार्ड', 'Ward')}</th><th className="num-cell">{t('आवेदन', 'Requests')}</th></tr></thead>
+          <thead><tr><th>{t('नाम', 'Name')}</th><th>{t('मोबाइल (लॉगिन)', 'Mobile (login)')}</th><th>{t('पेशा', 'Occupation')}</th><th>{t('वार्ड', 'Ward')}</th><th className="num-cell">{t('आवेदन', 'Requests')}</th><th></th></tr></thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.mobile}>
-                <td><b>{u.name}</b> {u.fresh ? <Badge label={t('नया', 'New')} color="var(--green)" soft="var(--green-soft)" /> : null}</td>
+            {citizens.map((u) => (
+              <tr key={u.id} style={u.active ? undefined : { opacity: 0.6 }}>
+                <td>
+                  <b>{u.name}</b>{' '}
+                  {SEEDED.has(u.id) ? null : <Badge label={t('नया', 'New')} color="var(--green)" soft="var(--green-soft)" />}{' '}
+                  {u.active ? null : <Badge label={t('निष्क्रिय', 'Inactive')} color="var(--red)" soft="#fde5e8" />}
+                </td>
                 <td>+91 {u.mobile}</td>
                 <td>{label(OCCUPATIONS, u.occupation)}</td>
                 <td>{label(WARDS, u.ward)}</td>
                 <td className="num-cell">{requests.filter((r) => r.citizen.mobile === u.mobile).length}</td>
+                <td>
+                  <button className="btn sm outline" style={tint(u.active ? 'var(--red)' : 'var(--green)')} onClick={() => setAccountActive(u.id, !u.active)}>
+                    {u.active ? t('निष्क्रिय करें', 'Deactivate') : t('सक्रिय करें', 'Activate')}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -378,6 +364,88 @@ export function AdminNotices() {
               <div className="small sub">{tl(n.body)}</div>
             </div>
           ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+const EMPTY_ADMIN: NewAdmin = { name: '', loginId: '', pin: '', mobile: '', designation: 'wardpanch' };
+
+/** Superadmin only: create, deactivate and remove admin accounts. */
+export function AdminAdmins() {
+  const { t, tl } = useT();
+  const me = useUser();
+  const accounts = useStore((s) => s.accounts);
+  const createAdmin = useStore((s) => s.createAdmin);
+  const setAccountActive = useStore((s) => s.setAccountActive);
+  const removeAccount = useStore((s) => s.removeAccount);
+  const [form, setForm] = useState<NewAdmin>(EMPTY_ADMIN);
+  const [error, setError] = useState('');
+  const [created, setCreated] = useState('');
+
+  const staff = accounts.filter((a) => a.role !== 'citizen').sort((a, b) => (a.role === b.role ? a.createdAt - b.createdAt : a.role === 'superadmin' ? -1 : 1));
+  const set = (patch: Partial<NewAdmin>) => { setForm({ ...form, ...patch }); setError(''); setCreated(''); };
+
+  const submit = () => {
+    if (!form.name.trim() || !form.loginId.trim() || !form.designation) return setError(t('कृपया सभी ज़रूरी (*) जानकारी भरें।', 'Please fill in all required (*) fields.'));
+    if (!/^[a-zA-Z][a-zA-Z0-9._-]{2,19}$/.test(form.loginId.trim())) return setError(t('यूज़र आईडी 3–20 अक्षर की हो, अक्षर से शुरू हो (a-z, 0-9, . _ -)।', 'User ID must be 3–20 characters and start with a letter (a-z, 0-9, . _ -).'));
+    if (!/^[6-9]\d{9}$/.test(form.mobile)) return setError(t('कृपया 10 अंकों का सही मोबाइल नंबर डालें।', 'Please enter a valid 10-digit mobile number.'));
+    if (!/^\d{4}$/.test(form.pin)) return setError(t('कृपया 4 अंकों का पिन डालें।', 'Please enter a 4-digit PIN.'));
+    if (createAdmin({ ...form, name: form.name.trim(), loginId: form.loginId.trim() }) === 'exists') return setError(t('यह यूज़र आईडी पहले से मौजूद है।', 'This user ID is already taken.'));
+    const id = form.loginId.trim().toLowerCase();
+    setCreated(t(`एडमिन खाता बन गया। लॉगिन: ${id} / ${form.pin}`, `Admin account created. Login: ${id} / ${form.pin}`));
+    setForm(EMPTY_ADMIN);
+  };
+
+  return (
+    <>
+      <PageHead icon="shield-account" title={t('एडमिन प्रबंधन', 'Admin Management')} subtitle={t('पंचायत के एडमिन खाते बनाएँ और संभालें', 'Create and manage Panchayat admin accounts')} />
+      <div className="split">
+        <form className="card stack" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <h3>{t('नया एडमिन बनाएँ', 'Create a new admin')}</h3>
+          <Field label={t('नाम', 'Name')} required icon="account" value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder={t('जैसे: राधा देवी', 'e.g. Radha Devi')} />
+          <Select label={t('पद', 'Designation')} required icon="badge-account-horizontal-outline" value={form.designation} options={DESIGNATIONS.filter((d) => d.id !== 'district').map((d) => ({ id: d.id, label: tl(d.name) }))} onChange={(designation) => set({ designation })} />
+          <Field label={t('मोबाइल नंबर', 'Mobile Number')} required icon="cellphone" value={form.mobile} inputMode="numeric" maxLength={10} placeholder="98765 43210" onChange={(e) => set({ mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })} />
+          <Field label={t('यूज़र आईडी (लॉगिन के लिए)', 'User ID (for login)')} required icon="at" value={form.loginId} autoCapitalize="none" placeholder={t('जैसे: wardpanch2', 'e.g. wardpanch2')} onChange={(e) => set({ loginId: e.target.value })} />
+          <Field label={t('पिन (4 अंक)', 'PIN (4 digits)')} required icon="lock-outline" value={form.pin} inputMode="numeric" maxLength={4} placeholder="••••" autoComplete="off" onChange={(e) => set({ pin: e.target.value.replace(/\D/g, '').slice(0, 4) })} />
+          {error ? <div className="error">{error}</div> : null}
+          <button type="submit" className="btn" style={tint('var(--purple)')}><Icon name="account-plus" />{t('एडमिन बनाएँ', 'Create admin')}</button>
+          {created ? <div className="ok row" style={{ gap: 6 }}><Icon name="check-circle" />{created}</div> : null}
+        </form>
+        <div className="stack">
+          <h3>{t('सभी एडमिन', 'All admins')} ({staff.length})</h3>
+          {staff.map((a) => {
+            const self = a.id === me?.id;
+            const designation = DESIGNATIONS.find((d) => d.id === a.designation);
+            return (
+              <div className="card" key={a.id} style={{ padding: 12, opacity: a.active ? 1 : 0.65 }}>
+                <div className="row" style={{ alignItems: 'flex-start' }}>
+                  <Icon name={a.role === 'superadmin' ? 'shield-crown' : 'account-tie'} size={28} color={a.role === 'superadmin' ? 'var(--purple)' : 'var(--navy)'} />
+                  <div className="grow">
+                    <b>{a.name}</b>{' '}
+                    {self ? <Badge label={t('आप', 'You')} color="var(--green)" soft="var(--green-soft)" /> : null}{' '}
+                    {a.active ? null : <Badge label={t('निष्क्रिय', 'Inactive')} color="var(--red)" soft="#fde5e8" />}
+                    <div className="small sub">{designation ? tl(designation.name) : tl(ROLE_NAME[a.role])}  •  {t('लॉगिन', 'Login')}: {a.loginId}</div>
+                    <div className="tiny" style={{ color: 'var(--faint)' }}>+91 {a.mobile}  •  {t('बनाया', 'Created')} {fmtDate(a.createdAt)}</div>
+                  </div>
+                </div>
+                {self || a.role === 'superadmin' ? null : (
+                  <div className="row" style={{ marginTop: 8, gap: 8 }}>
+                    <button className="btn sm outline" style={tint(a.active ? 'var(--amber)' : 'var(--green)')} onClick={() => setAccountActive(a.id, !a.active)}>
+                      <Icon name={a.active ? 'account-off-outline' : 'account-check-outline'} size={16} />{a.active ? t('निष्क्रिय करें', 'Deactivate') : t('सक्रिय करें', 'Activate')}
+                    </button>
+                    <button
+                      className="btn sm outline" style={tint('var(--red)')}
+                      onClick={() => { if (window.confirm(t(`${a.name} का खाता हटाएँ?`, `Remove the account of ${a.name}?`))) removeAccount(a.id); }}
+                    >
+                      <Icon name="delete-outline" size={16} />{t('हटाएँ', 'Remove')}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </>

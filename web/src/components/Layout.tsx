@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { useStore, useT } from '../store';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Role, isStaff } from '../data';
+import { useStore, useT, useUser } from '../store';
 import { Logo } from './Art';
 import { Icon, LangToggle, tint } from './ui';
 
-const LINKS: { to: string; hi: string; en: string }[] = [
+// `roles` limits a link to logged-in users with those roles; links without it are public.
+const LINKS: { to: string; hi: string; en: string; roles?: Role[] }[] = [
   { to: '/', hi: 'होम', en: 'Home' },
   { to: '/schemes', hi: 'योजनाएँ', en: 'Schemes' },
-  { to: '/complaint', hi: 'शिकायत दर्ज करें', en: 'Raise Complaint' },
-  { to: '/requests', hi: 'मेरी आवेदनें', en: 'My Applications' },
+  { to: '/complaint', hi: 'शिकायत दर्ज करें', en: 'Raise Complaint', roles: ['citizen'] },
+  { to: '/requests', hi: 'मेरी आवेदनें', en: 'My Applications', roles: ['citizen'] },
   { to: '/updates', hi: 'सूचनाएँ', en: 'Updates' },
   { to: '/dashboard', hi: 'गाँव की प्रगति', en: 'Village Dashboard' },
+  { to: '/admin', hi: 'प्रशासक डैशबोर्ड', en: 'Admin Dashboard', roles: ['admin', 'superadmin'] },
 ];
 
 export function Layout() {
   const { t } = useT();
   const { pathname } = useLocation();
-  const profile = useStore((s) => s.profile);
-  const isAdmin = useStore((s) => s.isAdmin);
+  const navigate = useNavigate();
+  const user = useUser();
+  const logout = useStore((s) => s.logout);
   const [open, setOpen] = useState(false);
   const resetDemo = useStore((s) => s.resetDemo);
 
@@ -42,20 +46,27 @@ export function Layout() {
             <Icon name={open ? 'close' : 'menu'} size={28} />
           </button>
           <nav className="nav-links">
-            {LINKS.map((l) => (
+            {LINKS.filter((l) => !l.roles || (user && l.roles.includes(user.role))).map((l) => (
               <NavLink key={l.to} to={l.to} end={l.to === '/'}>{t(l.hi, l.en)}</NavLink>
             ))}
           </nav>
           <div className="nav-actions">
             <LangToggle />
-            <Link to="/register" className="btn sm" style={tint('var(--green)')}>
-              <Icon name="account" size={17} />
-              {profile ? profile.name : t('पंजीकरण', 'Register')}
-            </Link>
-            <Link to={isAdmin ? '/admin' : '/admin/login'} className="btn sm outline" style={tint('var(--navy)')}>
-              <Icon name="shield-account" size={17} />
-              {t('प्रशासक', 'Admin')}
-            </Link>
+            {user ? (
+              <>
+                <Link to={isStaff(user) ? '/admin' : '/profile'} className="btn sm" style={tint(isStaff(user) ? 'var(--navy)' : 'var(--green)')}>
+                  <Icon name={user.role === 'citizen' ? 'account' : user.role === 'admin' ? 'account-tie' : 'shield-crown'} size={17} />
+                  {user.name}
+                </Link>
+                <button className="btn sm outline" style={tint('var(--red)')} title={t('लॉग आउट', 'Log out')} onClick={() => { logout(); navigate('/'); }}>
+                  <Icon name="logout" size={17} />{t('लॉग आउट', 'Log out')}
+                </button>
+              </>
+            ) : (
+              <Link to="/login" className="btn sm" style={tint('var(--navy)')}>
+                <Icon name="login" size={17} />{t('लॉगिन', 'Log in')}
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -72,8 +83,8 @@ export function Layout() {
           <button
             className="btn sm outline"
             style={{ background: 'transparent', color: '#fff', borderColor: '#7f9bd0' }}
-            title={t('पंजीकरण और नई शिकायतें हटाकर नमूना डेटा वापस लाएँ', 'Remove the registration and new complaints and restore the sample data')}
-            onClick={() => { if (window.confirm(t('डेमो डेटा रीसेट करें?', 'Reset the demo data?'))) resetDemo(); }}
+            title={t('नए खाते और शिकायतें हटाकर नमूना डेटा वापस लाएँ (लॉग आउट हो जाएँगे)', 'Remove new accounts and complaints and restore the sample data (logs you out)')}
+            onClick={() => { if (window.confirm(t('डेमो डेटा रीसेट करें?', 'Reset the demo data?'))) { resetDemo(); navigate('/'); } }}
           >
             <Icon name="refresh" size={16} />{t('डेमो रीसेट करें', 'Reset demo')}
           </button>

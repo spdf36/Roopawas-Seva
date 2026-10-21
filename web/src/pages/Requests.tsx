@@ -2,14 +2,15 @@ import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Chips, Empty, Icon, PageHead, RequestRow, RequestSummary, Timeline, tint } from '../components/ui';
 import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
-import { useStore, useT } from '../store';
+import { useStore, useT, useUser } from '../store';
 
 export function Requests() {
   const { t } = useT();
   const requests = useStore((s) => s.requests);
+  const mobile = useUser()?.mobile;
   const [filter, setFilter] = useState<RequestFilter>('all');
   const options = useFilterOptions();
-  const list = useMemo(() => requests.filter((r) => r.mine && matchesFilter(r, filter)), [requests, filter]);
+  const list = useMemo(() => requests.filter((r) => r.citizen.mobile === mobile && matchesFilter(r, filter)), [requests, filter, mobile]);
 
   return (
     <div className="container page" style={{ maxWidth: 860 }}>

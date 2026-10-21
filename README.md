@@ -13,26 +13,41 @@ design, content and flows:
 | **Mobile app** (Android APK) | [`app/`](app) | React Native · Expo SDK 57 · Expo Router |
 | **Website** | [`web/`](web) | React 19 · Vite · React Router |
 
-Both are bilingual (हिंदी / English toggle) and include the citizen side and the
-Sarpanch / admin side.
+Both are bilingual (हिंदी / English toggle) and share one login for every role – citizens, admins
+(Sarpanch / Panchayat staff) and the super admin. The account you log in with decides what you see.
 
-▶ **[Watch the app walkthrough](docs/app-demo.mp4)** (2:41, no audio)
+▶ **[Watch the app walkthrough](docs/app-demo.mp4)** (2:41, no audio – recorded before the login and roles
+were added, so it shows the earlier separate admin login)
 
 <p>
+  <img src="docs/screenshots/app-login.png" width="200" alt="App login screen">
   <img src="docs/screenshots/app-home.png" width="200" alt="App home screen">
   <img src="docs/screenshots/app-status-tracking.png" width="200" alt="Complaint status tracking">
-  <img src="docs/screenshots/app-village-dashboard.png" width="200" alt="Village dashboard">
-  <img src="docs/screenshots/app-admin-dashboard.png" width="200" alt="Sarpanch dashboard">
+  <img src="docs/screenshots/app-admin-dashboard.png" width="200" alt="Admin dashboard (super admin)">
 </p>
 <p>
   <img src="docs/screenshots/web-home.png" width="410" alt="Website home page">
-  <img src="docs/screenshots/web-admin-requests.png" width="410" alt="Website admin – all applications">
+  <img src="docs/screenshots/web-admin-management.png" width="410" alt="Website – super admin creating admins">
 </p>
 
 ## Features
 
+**Login and roles**
+
+| Role | Logs in with | Can |
+| --- | --- | --- |
+| Citizen | Mobile number + 4-digit PIN | Use all citizen services; sees only their own requests |
+| Admin | User ID + PIN | Run the Panchayat panel below |
+| Super admin | User ID + PIN | Everything an admin can, plus create, deactivate and remove admin accounts |
+
+- One login screen for everyone; there is no separate admin button.
+- The app opens on the login screen. On the website, information pages (home, schemes, notices,
+  village dashboard) are public, and complaints, applications and the admin panel need a login.
+- Deactivated accounts cannot log in. Admins can deactivate citizens; only the super admin manages admins.
+- Each status change records which admin made it, and the citizen sees that in the timeline.
+
 **Citizens**
-- One-time registration with mobile OTP (simulated)
+- Registration: details → mobile OTP (simulated) → choose a login PIN
 - Government schemes grouped by students, farmers, women, senior citizens and job seekers, with
   the citizen's own group shown first; apply in one tap
 - Raise a complaint (category, description, photo, location) and get a request number such as
@@ -45,7 +60,7 @@ Sarpanch / admin side.
 **Sarpanch / admin**
 - All applications with filters; update a request's status, department and a note for the citizen
 - Department-wise report and analytics
-- Village development plan, user list, and publishing notices
+- Village development plan, citizen accounts, and publishing notices
 
 ## Quick start
 
@@ -85,21 +100,34 @@ npm run build            # -> web/dist (static site; serve index.html for unknow
 
 ## Demo walkthrough
 
-1. Register under **मेरी जानकारी / My Profile**. Use any valid 10-digit mobile number and any
-   4-digit OTP.
-2. Raise a complaint under **मेरी समस्या**, then follow it under **मेरी आवेदनें**.
-3. Log in as the Sarpanch with **`sarpanch` / `1234`** (app: **अन्य → मुखिया / प्रशासक लॉगिन**;
-   website: **प्रशासक**), open the complaint, change its status and add a note.
-4. Back on the citizen side, the status, the note and the village dashboard totals have updated.
-5. **डेमो रीसेट करें / Reset demo** (app: **अन्य** tab; website: footer) restores the sample data.
+Demo accounts (also listed on the login screen – tap/click one to fill it in):
+
+| Role | Login | PIN |
+| --- | --- | --- |
+| Citizen (रामलाल शर्मा) | `9876543210` | `1111` |
+| Admin (सरपंच) | `sarpanch` | `1234` |
+| Admin (ग्राम सचिव) | `sachiv` | `2468` |
+| Super admin | `superadmin` | `0000` |
+
+1. On the login screen choose **पंजीकरण करें / Register**, fill in the details, enter any 4-digit
+   OTP and pick a PIN. You are logged in as the new citizen.
+2. Raise a complaint under **मेरी समस्या**, then follow it under **मेरी आवेदनें**. Log out
+   (app: **अन्य** tab; website: header).
+3. Log in as the super admin and open **एडमिन प्रबंधन / Admin management** to create a new admin.
+4. Log in as that admin (or `sarpanch`), open the complaint, change its status and add a note.
+5. Log back in as the citizen: the status, the note and who made the change are shown, and the
+   village dashboard totals have updated.
+6. **डेमो रीसेट करें / Reset demo** (app: **अन्य** tab; website: footer) restores the sample data
+   and accounts.
 
 ## Current limitations
 
 - **No backend yet.** All data is sample data stored on the device (AsyncStorage in the app,
   localStorage on the website). The app and website do not share data, and each phone or browser
   has its own copy.
-- OTP, notifications and the admin login are simulated; the admin credentials above are for the
-  demo only.
+- **Logins are for demonstration only.** OTP is simulated, and accounts and PINs are stored in plain
+  text on the device. Real authentication needs the backend.
+- Notifications are simulated.
 - The logo, banner and app icon are placeholder artwork (`*/src/components/Art.tsx`,
   `app/assets/`) until the final assets are ready.
 - The sample data and rules (`data.ts`, `store.ts`, `filters.ts`, `stats.ts`) are duplicated in

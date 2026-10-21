@@ -53,7 +53,7 @@ export function RequestDetail({ r, showCitizen }: { r: Request; showCitizen?: bo
               <View style={{ flex: 1, paddingBottom: 12 }}>
                 <Txt w={current ? 'b' : 'sb'} size={15} color={done ? C.text : C.faint}>{tl(STATUS[s].name)}</Txt>
                 <Txt size={13} color={done ? C.sub : C.faint}>{tl(FLOW_HINT[s])}</Txt>
-                {entry ? <Txt size={12} color={C.sub}>{fmtDate(entry.at)}</Txt> : null}
+                {entry ? <Txt size={12} color={C.sub}>{fmtDate(entry.at)}{entry.by ? `  •  ${entry.by}` : ''}</Txt> : null}
                 {entry?.note ? (
                   <View style={{ backgroundColor: C.bg, borderRadius: 6, padding: 8, marginTop: 4 }}>
                     <Txt size={13}>{entry.note}</Txt>

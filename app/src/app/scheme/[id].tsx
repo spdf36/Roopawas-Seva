@@ -1,22 +1,21 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { View } from 'react-native';
-import { NeedProfile } from '../../components/NeedProfile';
 import { Bubble, Btn, Card, Screen, Txt } from '../../components/ui';
 import { DEPARTMENTS, SCHEME_GROUPS } from '../../data';
-import { useStore, useT } from '../../store';
+import { useStore, useT, useUser } from '../../store';
 import { C } from '../../theme';
 
 export default function SchemeGroupScreen() {
   const { t, tl } = useT();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const profile = useStore((s) => s.profile);
+  const mobile = useUser()?.mobile;
   const requests = useStore((s) => s.requests);
   const applyScheme = useStore((s) => s.applyScheme);
 
   const group = SCHEME_GROUPS.find((g) => g.id === id);
   const groups = group ? [group] : SCHEME_GROUPS;
-  const applied = (schemeId: string) => requests.find((r) => r.mine && r.schemeId === schemeId);
+  const applied = (schemeId: string) => requests.find((r) => r.citizen.mobile === mobile && r.schemeId === schemeId);
 
   return (
     <Screen
@@ -26,7 +25,6 @@ export default function SchemeGroupScreen() {
       title={group ? tl(group.name) : t('सभी योजनाएँ', 'All Schemes')}
       subtitle={t('योजना चुनें और आवेदन करें', 'Choose a scheme and apply')}
     >
-      {profile ? null : <NeedProfile />}
       {groups.map((g) => (
         <View key={g.id} style={{ gap: 12 }}>
           {group ? null : (
@@ -45,7 +43,7 @@ export default function SchemeGroupScreen() {
                 {existing ? (
                   <Btn small outline color={C.green} icon="check-circle-outline" label={`${t('आवेदन किया गया', 'Applied')}  •  ${existing.id}`} onPress={() => router.navigate(`/request/${existing.id}`)} />
                 ) : (
-                  <Btn small color={g.color} icon="send" label={t('आवेदन करें', 'Apply')} disabled={!profile} onPress={() => applyScheme(sc.id)} />
+                  <Btn small color={g.color} icon="send" label={t('आवेदन करें', 'Apply')} onPress={() => applyScheme(sc.id)} />
                 )}
               </Card>
             );

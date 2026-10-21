@@ -5,11 +5,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Banner, Logo } from '../../components/Art';
 import { Grid, LangToggle, Txt } from '../../components/ui';
 import { Icon } from '../../data';
-import { useStore, useT } from '../../store';
+import { useT, useUser } from '../../store';
 import { C } from '../../theme';
 
 const TILES: { href: string; icon: Icon; color: string; hi: string; en: string }[] = [
-  { href: '/register', icon: 'account', color: C.green, hi: 'मेरी जानकारी', en: 'My Profile' },
+  { href: '/profile', icon: 'account', color: C.green, hi: 'मेरी जानकारी', en: 'My Profile' },
   { href: '/schemes', icon: 'bank', color: C.orange, hi: 'योजनाएँ', en: 'Government Schemes' },
   { href: '/complaint', icon: 'bullhorn', color: C.red, hi: 'मेरी समस्या', en: 'Complaint / Request' },
   { href: '/updates', icon: 'bell-ring', color: C.purple, hi: 'सूचनाएँ', en: 'Latest Updates' },
@@ -21,7 +21,7 @@ export default function Home() {
   const { t, lang } = useT();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const profile = useStore((s) => s.profile);
+  const profile = useUser();
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: C.card }} contentContainerStyle={{ paddingTop: insets.top, paddingBottom: 24 }}>

@@ -1,24 +1,25 @@
 import { Link } from 'react-router-dom';
-import { Badge, Bubble, Icon, NeedProfile, PageHead, tint } from '../components/ui';
+import { Badge, Bubble, Icon, NeedLogin, PageHead, tint } from '../components/ui';
 import { DEPARTMENTS, SCHEME_GROUPS } from '../data';
-import { useStore, useT } from '../store';
+import { useStore, useT, useUser } from '../store';
 import { C } from '../theme';
 
 export function Schemes() {
   const { t, tl } = useT();
-  const profile = useStore((s) => s.profile);
+  const user = useUser();
+  const isCitizen = user?.role === 'citizen';
   const requests = useStore((s) => s.requests);
   const applyScheme = useStore((s) => s.applyScheme);
-  const occupation = profile?.occupation;
+  const occupation = user?.occupation;
   // The group matching the citizen's registered occupation is listed first.
   const groups = [...SCHEME_GROUPS].sort((a, b) => Number(b.occupation === occupation) - Number(a.occupation === occupation));
-  const applied = (schemeId: string) => requests.find((r) => r.mine && r.schemeId === schemeId);
+  const applied = (schemeId: string) => requests.find((r) => r.citizen.mobile === user?.mobile && r.schemeId === schemeId);
 
   return (
     <div className="container page">
       <PageHead icon="bank-outline" title={t('सरकारी योजनाएँ', 'Government Schemes')} subtitle={t('आपके लिए उपलब्ध संभावित योजनाएं', 'Schemes you may be eligible for')} />
       <div className="stack" style={{ gap: 26 }}>
-        {profile ? null : <NeedProfile />}
+        {user ? null : <NeedLogin next="/schemes" />}
         {groups.map((g) => (
           <section key={g.id}>
             <div className="row" style={{ marginBottom: 10 }}>
@@ -38,8 +39,8 @@ export function Schemes() {
                       <Link to={`/requests/${existing.id}`} className="btn sm outline" style={tint('var(--green)')}>
                         <Icon name="check-circle-outline" size={17} />{t('आवेदन किया गया', 'Applied')}  •  {existing.id}
                       </Link>
-                    ) : (
-                      <button className="btn sm" style={tint(g.color)} disabled={!profile} onClick={() => applyScheme(sc.id)}>
+                    ) : user && !isCitizen ? null : (
+                      <button className="btn sm" style={tint(g.color)} disabled={!isCitizen} onClick={() => applyScheme(sc.id)}>
                         <Icon name="send" size={16} />{t('आवेदन करें', 'Apply')}
                       </button>
                     )}

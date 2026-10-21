@@ -125,15 +125,15 @@ export function RequestRow({ r, to, showCitizen }: { r: Request; to: string; sho
   );
 }
 
-/** Shown in place of a form when the citizen has not registered yet. */
-export function NeedProfile() {
+/** Prompts a visitor to log in (or register) before applying or raising a complaint. */
+export function NeedLogin({ next }: { next: string }) {
   const { t } = useT();
   return (
-    <div className="card center stack" style={{ alignItems: 'center', padding: 28 }}>
-      <Icon name="account-alert-outline" size={46} color="var(--orange)" />
-      <h3>{t('पहले पंजीकरण करें', 'Please register first')}</h3>
-      <p className="sub">{t('आवेदन या शिकायत भेजने के लिए एक बार पंजीकरण ज़रूरी है।', 'A one-time registration is needed before you can apply or raise a complaint.')}</p>
-      <Link to="/register" className="btn" style={tint('var(--green)')}><Icon name="account-plus" />{t('पंजीकरण करें', 'Register now')}</Link>
+    <div className="card row wrap" style={{ background: 'var(--blue-soft)', borderColor: '#bcd3f5' }}>
+      <Icon name="account-lock-outline" size={30} color="var(--navy)" />
+      <p className="grow">{t('आवेदन करने के लिए नागरिक के रूप में लॉगिन करें।', 'Log in as a citizen to apply.')}</p>
+      <Link to={`/login?next=${encodeURIComponent(next)}`} className="btn sm" style={tint('var(--navy)')}><Icon name="login" size={17} />{t('लॉगिन करें', 'Log in')}</Link>
+      <Link to="/register" className="btn sm outline" style={tint('var(--green)')}>{t('पंजीकरण करें', 'Register')}</Link>
     </div>
   );
 }
@@ -192,7 +192,7 @@ export function Timeline({ r }: { r: Request }) {
             <div className="tl-body" style={done ? undefined : { color: 'var(--faint)' }}>
               <b>{tl(STATUS[s].name)}</b>
               <div className="small" style={{ color: done ? 'var(--sub)' : 'var(--faint)' }}>{tl(FLOW_HINT[s])}</div>
-              {entry ? <div className="tiny sub">{fmtDate(entry.at)}</div> : null}
+              {entry ? <div className="tiny sub">{fmtDate(entry.at)}{entry.by ? `  •  ${entry.by}` : ''}</div> : null}
               {entry?.note ? <div className="tl-note">{entry.note}</div> : null}
             </div>
           </div>

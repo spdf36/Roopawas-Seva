@@ -1,89 +1,60 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Field, Icon, PageHead, Select, tint } from '../components/ui';
-import { AGE_GROUPS, Icon as IconName, L, OCCUPATIONS, WARDS } from '../data';
-import { Profile, useStore, useT } from '../store';
+import { CitizenFields, CitizenForm, EMPTY_CITIZEN, useValidateCitizen } from '../components/CitizenFields';
+import { Field, Icon, PageHead, tint } from '../components/ui';
+import { useStore, useT } from '../store';
 
-const EMPTY: Profile = { name: '', mobile: '', ageGroup: '', ward: '', occupation: '', family: '' };
-
+/** New citizen sign-up: details, then OTP, then choosing the login PIN. */
 export function Register() {
-  const { t, tl } = useT();
-  const profile = useStore((s) => s.profile);
-  const saveProfile = useStore((s) => s.saveProfile);
-  const clearProfile = useStore((s) => s.clearProfile);
+  const { t } = useT();
+  const register = useStore((s) => s.register);
+  const accounts = useStore((s) => s.accounts);
+  const validate = useValidateCitizen();
 
-  const [editing, setEditing] = useState(!profile);
-  const [form, setForm] = useState<Profile>(profile ?? EMPTY);
-  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [form, setForm] = useState<CitizenForm>(EMPTY_CITIZEN);
+  const [step, setStep] = useState<'form' | 'otp' | 'pin'>('form');
   const [otp, setOtp] = useState('');
+  const [pin, setPin] = useState('');
+  const [pin2, setPin2] = useState('');
   const [error, setError] = useState('');
 
-  const set = (patch: Partial<Profile>) => { setForm({ ...form, ...patch }); setError(''); };
-  const opts = (list: { id: string; name: L }[]) => list.map((o) => ({ id: o.id, label: tl(o.name) }));
-  const nameOf = (list: { id: string; name: L }[], id: string) => {
-    const hit = list.find((o) => o.id === id);
-    return hit ? tl(hit.name) : '—';
-  };
+  const taken = t('यह मोबाइल नंबर पहले से पंजीकृत है। कृपया लॉगिन करें।', 'This mobile number is already registered. Please log in.');
+  const digits = (v: string) => v.replace(/\D/g, '').slice(0, 4);
 
   const sendOtp = () => {
-    if (!form.name.trim() || !form.ageGroup || !form.ward || !form.occupation) {
-      return setError(t('कृपया सभी ज़रूरी (*) जानकारी भरें।', 'Please fill in all required (*) fields.'));
-    }
-    if (!/^[6-9]\d{9}$/.test(form.mobile)) {
-      return setError(t('कृपया 10 अंकों का सही मोबाइल नंबर डालें।', 'Please enter a valid 10-digit mobile number.'));
-    }
+    const problem = validate(form, true);
+    if (problem) return setError(problem);
+    if (accounts.some((a) => a.mobile === form.mobile || a.loginId === form.mobile)) return setError(taken);
     setError('');
     setOtp('');
     setStep('otp');
   };
 
-  const verify = () => {
+  const verifyOtp = () => {
     if (!/^\d{4}$/.test(otp)) return setError(t('कृपया 4 अंकों का OTP डालें।', 'Please enter the 4-digit OTP.'));
-    saveProfile({ ...form, name: form.name.trim(), family: form.family.trim() });
     setError('');
-    setStep('form');
-    setEditing(false);
+    setStep('pin');
   };
 
-  if (profile && !editing) {
-    const line = (icon: IconName, label: string, value: string) => (
-      <div className="row">
-        <Icon name={icon} color="var(--navy)" />
-        <div><div className="tiny sub">{label}</div><b>{value}</b></div>
-      </div>
-    );
-    return (
-      <div className="container narrow page">
-        <PageHead icon="account-outline" title={t('मेरी जानकारी', 'My Profile')} subtitle={t('आपका पंजीकरण पूरा है', 'Your registration is complete')} />
-        <div className="card stack">
-          <div className="ok row" style={{ gap: 6 }}><Icon name="check-decagram" />{t('मोबाइल सत्यापित', 'Mobile verified')}</div>
-          {line('account', t('नाम', 'Name'), profile.name)}
-          {line('cellphone', t('मोबाइल नंबर', 'Mobile Number'), `+91 ${profile.mobile}`)}
-          {line('calendar-account', t('आयु वर्ग', 'Age Group'), nameOf(AGE_GROUPS, profile.ageGroup))}
-          {line('map-marker', t('गाँव / वार्ड', 'Village / Ward'), nameOf(WARDS, profile.ward))}
-          {line('briefcase-outline', t('पेशा / श्रेणी', 'Occupation / Category'), nameOf(OCCUPATIONS, profile.occupation))}
-          {line('account-group', t('परिवार के सदस्य', 'Family Members'), profile.family || '—')}
-          <div className="row wrap" style={{ marginTop: 6 }}>
-            <button className="btn" onClick={() => { setForm(profile); setEditing(true); }}><Icon name="pencil" />{t('जानकारी बदलें', 'Edit details')}</button>
-            <Link to="/schemes" className="btn outline" style={tint('var(--orange)')}><Icon name="bank-outline" />{t('मेरे लिए योजनाएँ देखें', 'See schemes for me')}</Link>
-            <button className="btn outline" style={tint('var(--red)')} onClick={() => { clearProfile(); setForm(EMPTY); setEditing(true); }}><Icon name="logout" />{t('लॉग आउट', 'Log out')}</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const finish = () => {
+    if (!/^\d{4}$/.test(pin)) return setError(t('कृपया 4 अंकों का पिन चुनें।', 'Please choose a 4-digit PIN.'));
+    if (pin !== pin2) return setError(t('दोनों पिन एक जैसे नहीं हैं।', 'The two PINs do not match.'));
+    if (register({ ...form, name: form.name.trim(), family: form.family.trim() }, pin) === 'exists') {
+      setStep('form');
+      return setError(taken);
+    }
+    // Success logs the citizen in; the GuestOnly route wrapper then redirects to Home.
+  };
+
+  const pinStyle = { textAlign: 'center' as const, fontSize: 22, letterSpacing: 8 };
 
   if (step === 'otp') {
     return (
       <div className="container narrow page">
         <PageHead icon="cellphone-message" title={t('OTP सत्यापन', 'OTP Verification')} />
-        <form className="card stack" onSubmit={(e) => { e.preventDefault(); verify(); }}>
+        <form className="card stack" onSubmit={(e) => { e.preventDefault(); verifyOtp(); }}>
           <p className="center">{t(`+91 ${form.mobile} पर भेजा गया 4 अंकों का OTP डालें`, `Enter the 4-digit OTP sent to +91 ${form.mobile}`)}</p>
-          <Field
-            label="OTP" required value={otp} autoFocus inputMode="numeric" maxLength={4} placeholder="• • • •"
-            onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 4)); setError(''); }}
-            style={{ textAlign: 'center', fontSize: 24, letterSpacing: 8 }}
-          />
+          <Field label="OTP" required value={otp} autoFocus inputMode="numeric" maxLength={4} placeholder="• • • •" onChange={(e) => { setOtp(digits(e.target.value)); setError(''); }} style={pinStyle} />
           <div className="demo-hint">{t('डेमो: कोई भी 4 अंक डालें (असली SMS नहीं भेजा जाता)', 'Demo: enter any 4 digits (no real SMS is sent)')}</div>
           {error ? <div className="error center">{error}</div> : null}
           <button type="submit" className="btn block" style={tint('var(--green)')}><Icon name="check" />{t('सत्यापित करें', 'Verify')}</button>
@@ -93,25 +64,31 @@ export function Register() {
     );
   }
 
+  if (step === 'pin') {
+    return (
+      <div className="container narrow page">
+        <PageHead icon="lock-outline" title={t('अपना पिन चुनें', 'Choose your PIN')} subtitle={t('लॉगिन के लिए 4 अंकों का पिन', 'A 4-digit PIN for logging in')} />
+        <form className="card stack" onSubmit={(e) => { e.preventDefault(); finish(); }}>
+          <p className="center sub">{t(`आप मोबाइल नंबर ${form.mobile} और इस पिन से लॉगिन करेंगे।`, `You will log in with mobile number ${form.mobile} and this PIN.`)}</p>
+          <Field label={t('पिन', 'PIN')} required type="password" inputMode="numeric" maxLength={4} value={pin} placeholder="••••" autoFocus autoComplete="new-password" onChange={(e) => { setPin(digits(e.target.value)); setError(''); }} style={pinStyle} />
+          <Field label={t('पिन दोबारा डालें', 'Confirm PIN')} required type="password" inputMode="numeric" maxLength={4} value={pin2} placeholder="••••" autoComplete="new-password" onChange={(e) => { setPin2(digits(e.target.value)); setError(''); }} style={pinStyle} />
+          {error ? <div className="error center">{error}</div> : null}
+          <button type="submit" className="btn block" style={tint('var(--green)')}><Icon name="check" />{t('पंजीकरण पूरा करें', 'Complete registration')}</button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="container narrow page">
-      <PageHead
-        icon="account-plus-outline"
-        title={profile ? t('जानकारी बदलें', 'Edit Details') : t('अपना पंजीकरण करें', 'Register Yourself')}
-        subtitle={t('(एक बार की प्रक्रिया)', '(One-time process)')}
-      />
+      <PageHead icon="account-plus-outline" title={t('अपना पंजीकरण करें', 'Register Yourself')} subtitle={t('(एक बार की प्रक्रिया)', '(One-time process)')} />
       <form className="card stack" onSubmit={(e) => { e.preventDefault(); sendOtp(); }}>
-        <Field label={t('नाम', 'Name')} required icon="account" value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder={t('जैसे: रामलाल शर्मा', 'e.g. Ramlal Sharma')} />
-        <Field label={t('मोबाइल नंबर', 'Mobile Number')} required icon="cellphone" value={form.mobile} inputMode="numeric" maxLength={10} placeholder="98765 43210" onChange={(e) => set({ mobile: e.target.value.replace(/\D/g, '').slice(0, 10) })} />
-        <div className="grid g2 collapse">
-          <Select label={t('आयु वर्ग', 'Age Group')} required icon="calendar-account" value={form.ageGroup} placeholder={t('चुनें', 'Select')} options={opts(AGE_GROUPS)} onChange={(ageGroup) => set({ ageGroup })} />
-          <Select label={t('गाँव / वार्ड', 'Village / Ward')} required icon="map-marker" value={form.ward} placeholder={t('चुनें', 'Select')} options={opts(WARDS)} onChange={(ward) => set({ ward })} />
-        </div>
-        <Select label={t('पेशा / श्रेणी', 'Occupation / Category')} required icon="briefcase-outline" value={form.occupation} placeholder={t('चुनें (किसान, छात्र, नौकरीपेशा आदि)', 'Select (farmer, student, employed…)')} options={opts(OCCUPATIONS)} onChange={(occupation) => set({ occupation })} />
-        <Field label={t('परिवार के सदस्य (वैकल्पिक)', 'Family Members (optional)')} icon="account-group" value={form.family} inputMode="numeric" placeholder={t('जोड़ें', 'Add')} onChange={(e) => set({ family: e.target.value.replace(/\D/g, '').slice(0, 2) })} />
+        <CitizenFields form={form} onChange={(patch) => { setForm({ ...form, ...patch }); setError(''); }} mobileEditable />
         {error ? <div className="error">{error}</div> : null}
         <button type="submit" className="btn block">{t('OTP भेजें', 'Send OTP')}</button>
-        {profile ? <button type="button" className="btn outline block" style={tint('var(--sub)')} onClick={() => { setEditing(false); setError(''); }}>{t('रद्द करें', 'Cancel')}</button> : null}
+        <p className="center small sub">
+          {t('पहले से पंजीकृत हैं?', 'Already registered?')} <Link to="/login" style={{ color: 'var(--navy)', fontWeight: 700 }}>{t('लॉगिन करें', 'Log in')}</Link>
+        </p>
       </form>
       <p className="tiny sub center" style={{ marginTop: 12 }}>
         {t('आपकी जानकारी सुरक्षित है और केवल सरकारी योजनाओं के लिए उपयोग होगी।', 'Your information is safe and will only be used for government schemes.')}

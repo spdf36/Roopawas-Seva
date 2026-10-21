@@ -3,13 +3,13 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { Badge, Bubble, Card, Screen, Txt } from '../../components/ui';
 import { SCHEME_GROUPS } from '../../data';
-import { useStore, useT } from '../../store';
+import { useT, useUser } from '../../store';
 import { C } from '../../theme';
 
 export default function Schemes() {
   const { t, tl } = useT();
   const router = useRouter();
-  const occupation = useStore((s) => s.profile?.occupation);
+  const occupation = useUser()?.occupation;
   // The group matching the citizen's registered occupation is listed first.
   const groups = [...SCHEME_GROUPS].sort((a, b) => Number(b.occupation === occupation) - Number(a.occupation === occupation));
 

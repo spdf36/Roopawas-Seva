@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Field, Icon, NeedProfile, PageHead, Select, TextArea, tint } from '../components/ui';
+import { Field, Icon, PageHead, Select, TextArea, tint } from '../components/ui';
 import { CATEGORIES } from '../data';
 import { useStore, useT } from '../store';
 
 export function Complaint() {
   const { t, tl } = useT();
-  const profile = useStore((s) => s.profile);
   const addComplaint = useStore((s) => s.addComplaint);
 
   const [categoryId, setCategoryId] = useState('water');
@@ -50,7 +49,7 @@ export function Complaint() {
   return (
     <div className="container narrow page">
       {head}
-      {!profile ? <NeedProfile /> : (
+      {(
         <form className="card stack" onSubmit={(e) => { e.preventDefault(); submit(); }}>
           <Select label={t('श्रेणी चुनें', 'Select category')} required value={categoryId} options={CATEGORIES.map((c) => ({ id: c.id, label: tl(c.name) }))} onChange={setCategoryId} />
           <TextArea

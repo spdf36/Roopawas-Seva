@@ -1,16 +1,19 @@
 import { MaterialCommunityIcons as MCI } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
-import { Btn, Card, Grid, Screen, Txt } from '../../components/ui';
-import { Icon } from '../../data';
-import { useStore, useT } from '../../store';
+import { Badge, Btn, Card, Grid, LangToggle, Screen, Txt } from '../../components/ui';
+import { DESIGNATIONS, Icon, ROLE_NAME } from '../../data';
+import { useStore, useT, useUser } from '../../store';
 import { C } from '../../theme';
 
 export default function AdminHome() {
-  const { t } = useT();
+  const { t, tl } = useT();
   const router = useRouter();
   const requests = useStore((s) => s.requests);
-  const adminLogout = useStore((s) => s.adminLogout);
+  const logout = useStore((s) => s.logout);
+  const user = useUser();
+  const isSuper = user?.role === 'superadmin';
+  const designation = DESIGNATIONS.find((d) => d.id === user?.designation);
 
   const pending = requests.filter((r) => r.status !== 'resolved' && r.status !== 'rejected').length;
   const fresh = requests.filter((r) => r.status === 'submitted').length;
@@ -23,7 +26,9 @@ export default function AdminHome() {
     { icon: 'account-outline', label: t('उपयोगकर्ता प्रबंधन', 'User management'), href: '/admin/users' },
     { icon: 'bell-outline', label: t('सूचनाएँ / नोटिफिकेशन', 'Notices / Notifications'), href: '/admin/notices' },
     { icon: 'chart-box-outline', label: t('रिपोर्ट & Analytics', 'Reports & Analytics'), href: '/admin/reports?view=analytics' },
+    { icon: 'home-city-outline', label: t('गाँव की प्रगति (सार्वजनिक)', 'Village dashboard (public)'), href: '/dashboard' },
   ];
+  if (isSuper) menu.unshift({ icon: 'shield-account', label: t('एडमिन प्रबंधन', 'Admin management'), href: '/admin/admins' });
 
   const stat = (label: string, value: number, color: string) => (
     <Card style={{ alignItems: 'center', paddingHorizontal: 4 }}>
@@ -33,15 +38,17 @@ export default function AdminHome() {
   );
 
   return (
-    <Screen back title={t('प्रशासक डैशबोर्ड', 'Admin Dashboard')} subtitle="Admin / Sarpanch Dashboard">
+    <Screen title={t('प्रशासक डैशबोर्ड', 'Admin Dashboard')} subtitle="Admin / Sarpanch Dashboard">
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.blueSoft, alignItems: 'center', justifyContent: 'center' }}>
-          <MCI name="account-tie" size={32} color={C.navy} />
+          <MCI name={isSuper ? 'shield-crown' : 'account-tie'} size={32} color={C.navy} />
         </View>
         <View style={{ flex: 1 }}>
-          <Txt w="b" size={17} color={C.navy}>{t('मुखिया / प्रशासक', 'Sarpanch / Administrator')}</Txt>
-          <Txt size={13} color={C.sub}>{t('ग्राम पंचायत रूपावास', 'Gram Panchayat Roopawas')}</Txt>
+          <Txt w="b" size={17} color={C.navy}>{user?.name}</Txt>
+          <Txt size={13} color={C.sub}>{designation ? `${tl(designation.name)} • ` : ''}{t('ग्राम पंचायत रूपावास', 'Gram Panchayat Roopawas')}</Txt>
+          {user ? <View style={{ flexDirection: 'row', marginTop: 2 }}><Badge label={tl(ROLE_NAME[user.role])} color={isSuper ? C.purple : C.blue} soft={isSuper ? C.purpleSoft : C.blueSoft} /></View> : null}
         </View>
+        <LangToggle />
       </Card>
 
       <Grid cols={3} gap={8}>
@@ -69,7 +76,7 @@ export default function AdminHome() {
         ))}
       </View>
 
-      <Btn outline color={C.red} icon="logout" label={t('लॉग आउट', 'Log out')} onPress={() => { adminLogout(); router.replace('/'); }} />
+      <Btn outline color={C.red} icon="logout" label={t('लॉग आउट', 'Log out')} onPress={logout} />
     </Screen>
   );
 }

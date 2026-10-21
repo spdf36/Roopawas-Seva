@@ -1,10 +1,16 @@
-import { Redirect, Stack, useSegments } from 'expo-router';
-import { useStore } from '../../store';
+import { Stack } from 'expo-router';
+import { useUser } from '../../store';
 import { C } from '../../theme';
 
+// The root layout already limits this folder to staff; admin management is superadmin-only.
 export default function AdminLayout() {
-  const isAdmin = useStore((s) => s.isAdmin);
-  const segments: string[] = useSegments();
-  if (!isAdmin && segments[1] !== 'login') return <Redirect href="/admin/login" />;
-  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }} />;
+  const isSuper = useUser()?.role === 'superadmin';
+  return (
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>
+      <Stack.Screen name="index" />
+      <Stack.Protected guard={isSuper}>
+        <Stack.Screen name="admins" />
+      </Stack.Protected>
+    </Stack>
+  );
 }

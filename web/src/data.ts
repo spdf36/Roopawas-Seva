@@ -139,7 +139,8 @@ export const FLOW_HINT: Record<Status, L> = {
   rejected: l('अनुरोध अस्वीकृत', 'Request rejected'),
 };
 
-export type HistoryEntry = { status: Status; at: number; note?: string };
+/** `by` is the name of the staff member who made the change. */
+export type HistoryEntry = { status: Status; at: number; note?: string; by?: string };
 
 export type Request = {
   id: string;
@@ -155,7 +156,6 @@ export type Request = {
   createdAt: number;
   history: HistoryEntry[];
   citizen: { name: string; mobile: string };
-  mine: boolean;
   confirmed?: boolean;
 };
 
@@ -189,14 +189,14 @@ function seed(
 const DEMO = { name: 'रामलाल शर्मा', mobile: '9876543210' };
 
 export const SEED_REQUESTS: Request[] = [
-  seed({ id: 'RP-2026-00127', kind: 'complaint', mine: true, citizen: DEMO, categoryId: 'water', department: 'phed', title: l('पानी की समस्या', 'Water Problem'), description: 'गांव के चौक पर पानी की टंकी से पानी नहीं आ रहा है।', location: 'रूपावास, मुख्य चौक', createdAt: d(2026, 9, 12) }, 'under_review'),
-  seed({ id: 'RP-2026-00125', kind: 'complaint', mine: false, citizen: { name: 'भंवरलाल जाट', mobile: '9829011223' }, categoryId: 'road', department: 'pwd', title: l('सड़क पर गड्ढे', 'Potholes on Road'), description: 'स्कूल वाली सड़क पर बड़े गड्ढे हो गए हैं, बारिश में पानी भर जाता है।', location: 'रूपावास, स्कूल रोड', createdAt: d(2026, 9, 10) }, 'forwarded'),
-  seed({ id: 'RP-2026-00121', kind: 'complaint', mine: false, citizen: { name: 'सीता देवी', mobile: '9414055667' }, categoryId: 'clean', department: 'panchayat', title: l('नाली की सफाई', 'Drain Cleaning'), description: 'वार्ड 3 की नाली जाम है, गंदा पानी सड़क पर बह रहा है।', location: 'रूपावास, वार्ड 3', createdAt: d(2026, 9, 8) }, 'action_taken'),
-  seed({ id: 'RP-2026-00118', kind: 'complaint', mine: true, citizen: DEMO, categoryId: 'light', department: 'power', title: l('स्ट्रीट लाइट', 'Street Light'), description: 'मंदिर के पास की स्ट्रीट लाइट एक सप्ताह से बंद है।', location: 'रूपावास, मंदिर चौक', createdAt: d(2026, 9, 5) }, 'resolved'),
-  seed({ id: 'RP-2026-00115', kind: 'complaint', mine: false, citizen: { name: 'मोहन मीणा', mobile: '9887733445' }, categoryId: 'school', department: 'education', title: l('स्कूल में पेयजल', 'Drinking Water at School'), description: 'सरकारी स्कूल में पीने के पानी की टंकी खराब है।', location: 'रा. उ. मा. विद्यालय, रूपावास', createdAt: d(2026, 9, 4) }, 'received'),
-  seed({ id: 'RP-2026-00110', kind: 'application', mine: false, citizen: { name: 'किशन गुर्जर', mobile: '9660122334' }, schemeId: 'agri-subsidy', department: 'agri', title: l('कृषि अनुदान', 'Agriculture Subsidy'), description: 'कृषि अनुदान योजना के लिए आवेदन।', createdAt: d(2026, 9, 3) }, 'under_review'),
-  seed({ id: 'RP-2026-00102', kind: 'application', mine: true, citizen: DEMO, schemeId: 'pension', department: 'social', title: l('पेंशन सहायता', 'Pension Assistance'), description: 'पेंशन योजना के लिए आवेदन।', createdAt: d(2026, 9, 1) }, 'submitted'),
-  seed({ id: 'RP-2026-00098', kind: 'application', mine: true, citizen: DEMO, schemeId: 'scholarship', department: 'education', title: l('छात्रवृत्ति', 'Scholarship'), description: 'छात्रवृत्ति योजना के लिए आवेदन।', createdAt: d(2026, 8, 28) }, 'resolved'),
+  seed({ id: 'RP-2026-00127', kind: 'complaint', citizen: DEMO, categoryId: 'water', department: 'phed', title: l('पानी की समस्या', 'Water Problem'), description: 'गांव के चौक पर पानी की टंकी से पानी नहीं आ रहा है।', location: 'रूपावास, मुख्य चौक', createdAt: d(2026, 9, 12) }, 'under_review'),
+  seed({ id: 'RP-2026-00125', kind: 'complaint', citizen: { name: 'भंवरलाल जाट', mobile: '9829011223' }, categoryId: 'road', department: 'pwd', title: l('सड़क पर गड्ढे', 'Potholes on Road'), description: 'स्कूल वाली सड़क पर बड़े गड्ढे हो गए हैं, बारिश में पानी भर जाता है।', location: 'रूपावास, स्कूल रोड', createdAt: d(2026, 9, 10) }, 'forwarded'),
+  seed({ id: 'RP-2026-00121', kind: 'complaint', citizen: { name: 'सीता देवी', mobile: '9414055667' }, categoryId: 'clean', department: 'panchayat', title: l('नाली की सफाई', 'Drain Cleaning'), description: 'वार्ड 3 की नाली जाम है, गंदा पानी सड़क पर बह रहा है।', location: 'रूपावास, वार्ड 3', createdAt: d(2026, 9, 8) }, 'action_taken'),
+  seed({ id: 'RP-2026-00118', kind: 'complaint', citizen: DEMO, categoryId: 'light', department: 'power', title: l('स्ट्रीट लाइट', 'Street Light'), description: 'मंदिर के पास की स्ट्रीट लाइट एक सप्ताह से बंद है।', location: 'रूपावास, मंदिर चौक', createdAt: d(2026, 9, 5) }, 'resolved'),
+  seed({ id: 'RP-2026-00115', kind: 'complaint', citizen: { name: 'मोहन मीणा', mobile: '9887733445' }, categoryId: 'school', department: 'education', title: l('स्कूल में पेयजल', 'Drinking Water at School'), description: 'सरकारी स्कूल में पीने के पानी की टंकी खराब है।', location: 'रा. उ. मा. विद्यालय, रूपावास', createdAt: d(2026, 9, 4) }, 'received'),
+  seed({ id: 'RP-2026-00110', kind: 'application', citizen: { name: 'किशन गुर्जर', mobile: '9660122334' }, schemeId: 'agri-subsidy', department: 'agri', title: l('कृषि अनुदान', 'Agriculture Subsidy'), description: 'कृषि अनुदान योजना के लिए आवेदन।', createdAt: d(2026, 9, 3) }, 'under_review'),
+  seed({ id: 'RP-2026-00102', kind: 'application', citizen: DEMO, schemeId: 'pension', department: 'social', title: l('पेंशन सहायता', 'Pension Assistance'), description: 'पेंशन योजना के लिए आवेदन।', createdAt: d(2026, 9, 1) }, 'submitted'),
+  seed({ id: 'RP-2026-00098', kind: 'application', citizen: DEMO, schemeId: 'scholarship', department: 'education', title: l('छात्रवृत्ति', 'Scholarship'), description: 'छात्रवृत्ति योजना के लिए आवेदन।', createdAt: d(2026, 8, 28) }, 'resolved'),
 ];
 
 export const FIRST_NEW_SEQ = 128;
@@ -248,13 +248,67 @@ export const DEVELOPMENT_WORKS: { id: string; name: L; progress: number; budget:
   { id: 'd5', name: l('पौधारोपण अभियान – 500 पेड़', 'Plantation drive – 500 trees'), progress: 50, budget: '₹ 1.2 लाख' },
 ];
 
-export const SEED_USERS: { name: string; mobile: string; occupation: string; ward: string }[] = [
-  { name: 'रामलाल शर्मा', mobile: '9876543210', occupation: 'farmer', ward: 'w1' },
-  { name: 'भंवरलाल जाट', mobile: '9829011223', occupation: 'farmer', ward: 'w2' },
-  { name: 'सीता देवी', mobile: '9414055667', occupation: 'homemaker', ward: 'w3' },
-  { name: 'मोहन मीणा', mobile: '9887733445', occupation: 'employed', ward: 'w5' },
-  { name: 'किशन गुर्जर', mobile: '9660122334', occupation: 'farmer', ward: 'w4' },
-  { name: 'पूजा कुमारी', mobile: '9785566778', occupation: 'student', ward: 'w2' },
+// ---------- Accounts ----------
+export type Role = 'citizen' | 'admin' | 'superadmin';
+
+export type Account = {
+  id: string;
+  role: Role;
+  name: string;
+  /** What the user types to log in: the mobile number for citizens, a user ID for staff. */
+  loginId: string;
+  pin: string;
+  mobile: string;
+  active: boolean;
+  createdAt: number;
+  // Citizens
+  ageGroup?: string;
+  ward?: string;
+  occupation?: string;
+  family?: string;
+  // Staff
+  designation?: string;
+};
+
+export const isStaff = (a: Account | null | undefined) => a?.role === 'admin' || a?.role === 'superadmin';
+
+export const ROLE_NAME: Record<Role, L> = {
+  citizen: l('नागरिक', 'Citizen'),
+  admin: l('प्रशासक', 'Admin'),
+  superadmin: l('सुपर एडमिन', 'Super Admin'),
+};
+
+export const DESIGNATIONS: { id: string; name: L }[] = [
+  { id: 'sarpanch', name: l('सरपंच', 'Sarpanch') },
+  { id: 'upsarpanch', name: l('उप-सरपंच', 'Deputy Sarpanch') },
+  { id: 'secretary', name: l('ग्राम सचिव', 'Village Secretary') },
+  { id: 'wardpanch', name: l('वार्ड पंच', 'Ward Member') },
+  { id: 'staff', name: l('पंचायत कर्मचारी', 'Panchayat Staff') },
+  { id: 'district', name: l('ज़िला प्रशासन', 'District Administration') },
+];
+
+/** Demo-only credentials, listed on the login screen. */
+export const DEMO_LOGINS: { role: Role; loginId: string; pin: string }[] = [
+  { role: 'citizen', loginId: '9876543210', pin: '1111' },
+  { role: 'admin', loginId: 'sarpanch', pin: '1234' },
+  { role: 'superadmin', loginId: 'superadmin', pin: '0000' },
+];
+
+const SEED_DATE = d(2026, 8, 1);
+const citizen = (id: string, name: string, mobile: string, occupation: string, ward: string, ageGroup: string): Account => ({
+  id, role: 'citizen', name, loginId: mobile, pin: '1111', mobile, active: true, createdAt: SEED_DATE, occupation, ward, ageGroup, family: '',
+});
+
+export const SEED_ACCOUNTS: Account[] = [
+  { id: 'u-super', role: 'superadmin', name: 'सुपर एडमिन', loginId: 'superadmin', pin: '0000', mobile: '9414000001', active: true, createdAt: SEED_DATE, designation: 'district' },
+  { id: 'u-sarpanch', role: 'admin', name: 'सुरेश कुमार', loginId: 'sarpanch', pin: '1234', mobile: '9414000002', active: true, createdAt: SEED_DATE, designation: 'sarpanch' },
+  { id: 'u-sachiv', role: 'admin', name: 'महेश वर्मा', loginId: 'sachiv', pin: '2468', mobile: '9414000003', active: true, createdAt: SEED_DATE, designation: 'secretary' },
+  citizen('u-c1', 'रामलाल शर्मा', '9876543210', 'farmer', 'w1', '41-60'),
+  citizen('u-c2', 'भंवरलाल जाट', '9829011223', 'farmer', 'w2', '41-60'),
+  citizen('u-c3', 'सीता देवी', '9414055667', 'homemaker', 'w3', '26-40'),
+  citizen('u-c4', 'मोहन मीणा', '9887733445', 'employed', 'w5', '26-40'),
+  citizen('u-c5', 'किशन गुर्जर', '9660122334', 'farmer', 'w4', '41-60'),
+  citizen('u-c6', 'पूजा कुमारी', '9785566778', 'student', 'w2', '18-25'),
 ];
 
 export const fmtDate = (ts: number) => {

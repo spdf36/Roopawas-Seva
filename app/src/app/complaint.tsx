@@ -3,7 +3,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
-import { NeedProfile } from '../components/NeedProfile';
 import { Btn, Card, Field, Screen, Select, Txt } from '../components/ui';
 import { CATEGORIES } from '../data';
 import { useStore, useT } from '../store';
@@ -12,7 +11,6 @@ import { C } from '../theme';
 export default function Complaint() {
   const { t, tl } = useT();
   const router = useRouter();
-  const profile = useStore((s) => s.profile);
   const addComplaint = useStore((s) => s.addComplaint);
 
   const [categoryId, setCategoryId] = useState('water');
@@ -51,10 +49,6 @@ export default function Complaint() {
         <Btn outline label={t('होम पर जाएँ', 'Go to Home')} icon="home" onPress={() => router.replace('/')} />
       </Screen>
     );
-  }
-
-  if (!profile) {
-    return <Screen {...header}><NeedProfile /></Screen>;
   }
 
   return (

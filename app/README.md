@@ -41,14 +41,20 @@ cd android
 
 ## Demo script
 
-1. **Home** – six tiles; switch language with the हिंदी / English toggle.
-2. **मेरी जानकारी** – register (any valid 10-digit mobile, any 4-digit OTP).
+The app opens on the login screen. Demo accounts are listed there (tap one to fill it in); see the
+main README for the full list. The role of the account decides what opens after login.
+
+1. **पंजीकरण करें** on the login screen – details, any 4-digit OTP, then choose a PIN. You are
+   logged in as the new citizen.
+2. **Home** – six tiles; switch language with the हिंदी / English toggle.
 3. **मेरी समस्या** – raise a complaint; you get a number like `RP-2026-00128`.
-4. **मेरी आवेदनें** – track it through the six steps.
-5. **अन्य → मुखिया / प्रशासक लॉगिन** – log in with `sarpanch` / `1234`, open the complaint,
-   change its status and add a note.
-6. Back on the citizen side the status, note and **गाँव की प्रगति** totals have updated.
-7. **अन्य → डेमो रीसेट करें** restores the sample data before the next demo.
+4. **मेरी आवेदनें** – track it through the six steps. **अन्य → लॉग आउट** to log out.
+5. Log in as `superadmin` / `0000` → **एडमिन प्रबंधन** to create an admin.
+6. Log in as that admin (or `sarpanch` / `1234`), open the complaint, change its status and
+   add a note.
+7. Log back in as the citizen: the status, note, who made the change and the **गाँव की प्रगति**
+   totals have updated.
+8. **अन्य → डेमो रीसेट करें** restores the sample data and accounts before the next demo.
 
 ## Where things are
 
