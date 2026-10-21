@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Roopawas Seva",
+    "slug": "roopawas-seva",
+    "scheme": "roopawasseva",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "in.roopawas.seva"
+    },
+    "android": {
+      "package": "in.roopawas.seva",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Roopawas Seva lets you attach a photo of the problem to your complaint.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "platforms": [
+      "android",
+      "ios"
+    ]
+  }
+}

@@ -1,0 +1,43 @@
+# Roopawas Seva – website (React)
+
+The web portal, built with React + Vite + TypeScript. The mobile app is a separate React
+Native project in `../app`.
+
+Demo MVP: there is no backend yet. All data is sample data stored in the browser
+(localStorage), so each browser has its own copy and nothing syncs with the mobile app.
+
+## Run it
+
+```bash
+npm install
+npm run dev        # http://localhost:5173
+npm run build      # typecheck + production build -> dist/
+npm run preview    # serve the production build locally
+```
+
+`dist/` is a static site and can be hosted anywhere. It is a single-page app, so the host must
+serve `index.html` for unknown paths (`public/_redirects` already does this on Netlify).
+
+## Demo script
+
+1. **Home** – overview, services, complaint flow; switch language with हिंदी / English.
+2. **पंजीकरण** – register (any valid 10-digit mobile, any 4-digit OTP).
+3. **शिकायत दर्ज करें** – raise a complaint; you get a number like `RP-2026-00128`.
+4. **मेरी आवेदनें** – track it through the six steps.
+5. **प्रशासक** – log in with `sarpanch` / `1234`, open the complaint, change its status and
+   add a note.
+6. Back on the citizen side the status, note and **गाँव की प्रगति** totals have updated.
+7. **डेमो रीसेट करें** in the footer restores the sample data before the next demo.
+
+## Where things are
+
+| Path | What |
+| --- | --- |
+| `src/App.tsx` | Routes |
+| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel |
+| `src/components/` | Navbar/footer layout, shared UI, placeholder logo/banner (`Art.tsx`) |
+| `src/styles.css` | All styling; colours are CSS variables at the top |
+| `src/data.ts`, `src/store.ts` | Sample content and state; mirrored in `../app/src` |
+
+To replace the placeholder logo and banner, swap the `Logo` and `Banner` components in
+`src/components/Art.tsx` for `<img>` tags and replace `public/favicon.png`.
