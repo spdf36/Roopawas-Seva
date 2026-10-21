@@ -23,6 +23,11 @@ export const config = {
   uploadsDir: path.resolve(import.meta.dirname, '..', env.UPLOADS_DIR ?? 'uploads'),
   /** Website origins allowed to call the API (comma-separated). */
   webOrigins: (env.WEB_ORIGIN ?? 'http://localhost:5173').split(',').map((o) => o.trim()).filter(Boolean),
+  /**
+   * How many reverse proxies (load balancer, Nginx…) sit in front of the server, so rate limits see the
+   * visitor's real IP address instead of the proxy's. 0 when the server is reached directly.
+   */
+  trustProxy: Number(env.TRUST_PROXY ?? 0),
   /** Enables the demo logins and the reset endpoint. Never set in a real deployment. */
   demoMode: env.DEMO_MODE === 'true',
   /** The first super admin, created by `npm run setup` when the database has none. */

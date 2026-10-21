@@ -67,6 +67,26 @@ const sessionSchema = new Schema<SessionDoc>({
 
 export const SessionModel = model<SessionDoc>('Session', sessionSchema);
 
+// ---------- Registration OTPs ----------
+export interface OtpDoc {
+  /** The mobile number the code was sent to: one pending code per number. */
+  _id: string;
+  /** SHA-256 of the code. */
+  codeHash: string;
+  /** Wrong guesses so far; the code stops working after OTP_MAX_ATTEMPTS. */
+  attempts: number;
+  expiresAt: Date;
+}
+
+const otpSchema = new Schema<OtpDoc>({
+  _id: { type: String, required: true },
+  codeHash: { type: String, required: true },
+  attempts: { type: Number, required: true, default: 0 },
+  expiresAt: { type: Date, required: true, expires: 0 },
+});
+
+export const OtpModel = model<OtpDoc>('Otp', otpSchema);
+
 // ---------- Requests (complaints and scheme applications) ----------
 export interface HistoryDoc { status: Status; at: Date; note?: string; by?: string; byId?: string }
 

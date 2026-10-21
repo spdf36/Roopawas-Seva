@@ -1,11 +1,11 @@
 import { normaliseLoginId } from '@shared/data';
 import { FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS } from '@shared/seed';
 import {
-  AccountModel, BASELINE_ID, BaselineModel, CounterModel, NoticeModel, RequestModel, SchemeModel, SessionModel, WorkModel,
+  AccountModel, BASELINE_ID, BaselineModel, CounterModel, NoticeModel, OtpModel, RequestModel, SchemeModel, SessionModel, WorkModel,
 } from './models';
 import { hashPin } from './pins';
 
-export const ALL_MODELS = [AccountModel, SessionModel, RequestModel, CounterModel, NoticeModel, SchemeModel, WorkModel, BaselineModel];
+export const ALL_MODELS = [AccountModel, SessionModel, OtpModel, RequestModel, CounterModel, NoticeModel, SchemeModel, WorkModel, BaselineModel];
 
 /** The sequence that request numbers (RP-2026-00128…) are taken from. */
 export const REQUEST_COUNTER = 'request';

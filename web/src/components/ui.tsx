@@ -26,6 +26,7 @@ export function useErrorText() {
       case 'in_use': return t('इसे हटाया नहीं जा सकता क्योंकि इससे जुड़े आवेदन मौजूद हैं।', 'This cannot be deleted because applications refer to it.');
       case 'invalid': return t('जानकारी सही नहीं है। कृपया जाँचकर फिर से भेजें।', 'Some details are not valid. Please check and try again.');
       case 'too_large': return t('फोटो बहुत बड़ी है या जगह भर गई है। कृपया छोटी फोटो चुनें या फोटो हटाकर भेजें।', 'The photo is too large, or storage is full. Choose a smaller photo or send without one.');
+      case 'rate_limited': return t('बहुत अधिक प्रयास हुए। कृपया 15 मिनट बाद फिर से प्रयास करें।', 'Too many attempts. Please try again in 15 minutes.');
       case 'server_error': return t('सर्वर पर कुछ गलत हो गया। कृपया थोड़ी देर बाद फिर से प्रयास करें।', 'Something went wrong on the server. Please try again in a little while.');
       default: return t('सर्वर से संपर्क नहीं हो सका। कृपया फिर से प्रयास करें।', 'Could not reach the server. Please try again.');
     }

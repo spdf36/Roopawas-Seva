@@ -5,7 +5,18 @@ implements the API contract in `../shared/api.ts`, which the website also uses; 
 `../shared`.
 
 **Status:** being built in stages. Done: project setup (stage 1), database models, demo seed and setup
-(stage 2). The endpoints follow in the next stages.
+(stage 2), auth and accounts (stage 3: `/auth/*`, `/accounts/*`). Requests, content and photos follow.
+
+## Logins and security
+
+- A login returns a random token (sent back as `Authorization: Bearer <token>`); sessions last 30 days.
+  Logout, deactivation and removal end sessions at once.
+- Failed logins are limited to 5 per login ID and 30 per address in 15 minutes, OTPs to 3 per number in
+  10 minutes and 10 per address per hour (`429 rate_limited`). The counters live in memory, which is fine
+  for one server process. Behind a proxy, set `TRUST_PROXY` so the limits see visitors' real addresses.
+- **OTP:** in demo mode any 4 digits are accepted. Otherwise the server creates a code (valid 10 minutes,
+  5 tries, stored hashed). **No SMS provider is connected yet:** the code is written to the server log
+  (`src/otp.ts`). Connect a provider there before citizens register for real.
 
 ## Run it
 
@@ -38,6 +49,7 @@ connection is refused.
 | `PORT` | Port to listen on (default 4000) |
 | `MONGODB_URI` | MongoDB Atlas connection string |
 | `MONGODB_DB` | Database name inside the cluster (default `roopawas-seva`) |
+| `TRUST_PROXY` | Number of reverse proxies in front of the server (0 when reached directly) |
 | `WEB_ORIGIN` | Website address(es) allowed to call the API, comma-separated |
 | `UPLOADS_DIR` | Folder for uploaded photos; must be on a persistent disk in production |
 | `DEMO_MODE` | `true` enables demo logins, the reset endpoint and `npm run seed`; keep `false` for real use |
@@ -51,6 +63,7 @@ connection is refused.
 | --- | --- |
 | `accounts` | Citizens and staff. Login IDs are unique; one citizen account per mobile number. PINs are stored as bcrypt hashes only. |
 | `sessions` | Login sessions, keyed by a SHA-256 hash of the token (never the token itself); MongoDB deletes them when they expire. |
+| `otps` | Pending registration codes (hashed), one per mobile number; deleted when used or expired. |
 | `requests` | Complaints and scheme applications, keyed by their request number (`RP-2026-00128`). Photos are files in `UPLOADS_DIR`; only the file name is stored. |
 | `counters` | The sequence request numbers are taken from. |
 | `notices`, `schemes`, `works`, `baselines` | Content managed by the Panchayat (schemes keyed by their short ID). |
@@ -71,5 +84,10 @@ Every error is JSON `{ "code": "..." }` with a matching HTTP status, using the c
 | `src/db.ts` | MongoDB connection |
 | `src/models.ts` | Mongoose models (one per collection) |
 | `src/serialize.ts` | Turns documents into the shared API types – the only way data leaves the server |
+| `src/routes/` | The endpoints, one file per area (`auth.ts`, `accounts.ts`) |
+| `src/auth.ts` | Sessions: start, end, and `authenticate(req, roles)` for routes |
+| `src/otp.ts` | Registration codes, and where an SMS provider plugs in |
+| `src/rateLimit.ts` | Attempt counters for logins and OTPs |
+| `src/http.ts` | Reading request bodies safely; `fail(status, code)` |
 | `src/pins.ts` | PIN hashing |
 | `src/sampleData.ts`, `src/scripts/` | Demo seed and the setup script |

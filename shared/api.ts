@@ -44,6 +44,7 @@ export type ErrorCode =
   | 'in_use' // cannot delete: other records still refer to it (e.g. a scheme with applications)
   | 'invalid' // the request body failed validation
   | 'too_large' // 413: the upload (e.g. a photo) is too big
+  | 'rate_limited' // 429: too many attempts (logins, OTPs); try again later
   | 'server_error' // 500: something unexpected failed on the server
   | 'network'; // the server could not be reached
 
@@ -58,23 +59,24 @@ export class ApiError extends Error {
 
 /**
  * Everything the website needs from the server. The comment on each method is the REST route the
- * backend exposes; the session token travels as `Authorization: Bearer <token>`.
+ * backend exposes, with its JSON body where it has one; the session token travels as
+ * `Authorization: Bearer <token>`. Responses are the return type as JSON; a `void` method answers 204.
  * All rules (roles, ownership, status flow, validation) are enforced behind this interface,
  * never only in the UI.
  */
 export interface Api {
   // ---- Auth ----
-  /** POST /auth/login → 401 invalid_login, 403 inactive */
+  /** POST /auth/login { loginId, pin } → 401 invalid_login, 403 inactive, 429 rate_limited */
   login(loginId: string, pin: string): Promise<Session>;
   /** POST /auth/logout – must send the current token at call time; the caller clears its session straight after */
   logout(): Promise<void>;
-  /** POST /auth/otp – sends the registration OTP to a mobile number → 409 exists */
+  /** POST /auth/otp { mobile } – sends the registration OTP to a mobile number → 409 exists, 429 rate_limited */
   sendOtp(mobile: string): Promise<void>;
-  /** POST /auth/register – creates a citizen account and logs it in → 400 invalid (bad OTP), 409 exists */
+  /** POST /auth/register { details, otp, pin } – creates a citizen account and logs it in → 400 invalid (bad OTP), 409 exists */
   register(details: CitizenDetails, otp: string, pin: string): Promise<Session>;
   /** GET /auth/me */
   me(): Promise<User>;
-  /** PATCH /auth/me – citizens only */
+  /** PATCH /auth/me ProfilePatch – citizens only */
   updateProfile(patch: ProfilePatch): Promise<User>;
 
   // ---- Requests (complaints and scheme applications) ----
@@ -137,7 +139,7 @@ export interface Api {
   // ---- Accounts ----
   /** GET /accounts?role=citizen|staff – citizens: staff; staff accounts: super admin */
   listAccounts(filter: AccountFilter): Promise<User[]>;
-  /** POST /accounts – super admin only → 409 exists */
+  /** POST /accounts NewAdmin – super admin only → 409 exists */
   createAdmin(a: NewAdmin): Promise<User>;
   /** PATCH /accounts/:id { active } – admins manage citizens, the super admin also manages admins */
   setAccountActive(id: string, active: boolean): Promise<User>;
