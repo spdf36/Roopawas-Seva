@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
-import { ApiError, NewAdmin } from '../api';
+import { useEffect, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ApiError, NewAdmin, RequestQuery, RequestSort } from '../api';
 import {
   useAccounts, useCreateAdmin, useLogout, useRemoveAccount, useRequest, useRequests, useSetAccountActive, useUpdateStatus, useVillageStats,
 } from '../api/hooks';
 import { Badge, Chips, Empty, Field, Icon, Loaded, PageHead, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint, useErrorText } from '../components/ui';
 import {
-  CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, ROLE_NAME, Request, SEED_ACCOUNTS, STATUS, Status, WARDS,
-  fmtDate, nextStatuses,
+  CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, OVERDUE_DAYS, ROLE_NAME, Request, RequestFilter, SEED_ACCOUNTS,
+  STATUS, Status, WARDS, daysOpen, fmtDate, isClosed, nextStatuses,
 } from '../data';
-import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
+import { useFilterOptions } from '../filters';
 import { useT, useUser } from '../store';
 
 const isOpen = (s: Status) => s !== 'resolved' && s !== 'rejected';
@@ -112,36 +112,128 @@ export function AdminHome() {
   );
 }
 
+/** Days a request has been open (coloured as it gets old), or how long a closed one took. */
+function Age({ r }: { r: Request }) {
+  const { t } = useT();
+  const days = daysOpen(r);
+  if (isClosed(r)) return <span className="tiny sub">{t(`${days} दिन में`, `in ${days} days`)}</span>;
+  const color = days >= OVERDUE_DAYS ? 'var(--red)' : days >= 7 ? 'var(--amber)' : 'var(--sub)';
+  return (
+    <b style={{ color, whiteSpace: 'nowrap' }} title={days >= OVERDUE_DAYS ? t(`${OVERDUE_DAYS} दिन से अधिक से लंबित`, `Pending for more than ${OVERDUE_DAYS} days`) : undefined}>
+      {days >= OVERDUE_DAYS ? <Icon name="alert" size={15} /> : null} {t(`${days} दिन`, `${days} days`)}
+    </b>
+  );
+}
+
+const SORTS: RequestSort[] = ['newest', 'oldest', 'updated'];
+const isSort = (v: string | null): v is RequestSort => SORTS.includes(v as RequestSort);
+const isStatusFilter = (v: string | null): v is RequestFilter => ['all', 'active', 'done', 'rejected'].includes(v ?? '');
+
 export function AdminRequests() {
   const { t, tl } = useT();
   const navigate = useNavigate();
-  const requests = useRequests();
-  const [filter, setFilter] = useState<RequestFilter>('all');
   const options = useFilterOptions();
-  const list = requests.data?.filter((r) => matchesFilter(r, filter));
+  // Filters live in the URL, so they survive opening a request and coming back, and can be shared as a link.
+  const [params, setParams] = useSearchParams();
+  const param = (key: string) => params.get(key) ?? '';
+  const query: RequestQuery = {
+    q: param('q') || undefined,
+    status: isStatusFilter(params.get('status')) ? params.get('status') as RequestFilter : 'all',
+    category: param('category') || undefined,
+    department: param('department') || undefined,
+    ward: param('ward') || undefined,
+    sort: isSort(params.get('sort')) ? params.get('sort') as RequestSort : 'newest',
+  };
+  const requests = useRequests(query);
+  // Always build on the latest URL: the delayed search update below must not bring back filters cleared meanwhile.
+  const latest = useRef(params);
+  latest.current = params;
+  const setParam = (key: string, value: string) => {
+    const next = new URLSearchParams(latest.current);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    setParams(next, { replace: true });
+  };
+
+  // The search box updates the URL (and so the query) once typing pauses; only the typed text restarts the timer.
+  const [search, setSearch] = useState(param('q'));
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (search.trim() !== (latest.current.get('q') ?? '')) setParam('q', search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  // …and follows the URL when it changes some other way (a link, the back button).
+  const urlSearch = param('q');
+  useEffect(() => {
+    setSearch((typed) => (typed.trim() === urlSearch ? typed : urlSearch));
+  }, [urlSearch]);
+
+  const filtered = ['q', 'status', 'category', 'department', 'ward'].some((k) => params.get(k));
+  const all = { id: '', label: t('सभी', 'All') };
+  const list = requests.data;
 
   return (
     <>
-      <PageHead icon="file-document-multiple-outline" title={t('सभी आवेदन', 'All Applications')} subtitle={list ? t(`कुल ${list.length}`, `${list.length} total`) : undefined} />
+      <PageHead icon="file-document-multiple-outline" title={t('सभी आवेदन', 'All Applications')} subtitle={list ? t(`${list.length} आवेदन`, `${list.length} requests`) : undefined} />
       <div className="stack">
-        <Chips value={filter} options={options} onChange={setFilter} />
+        <div className="card stack" style={{ gap: 10 }}>
+          <Field
+            label={t('खोजें', 'Search')} icon="magnify" type="search" value={search} onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('आवेदन नंबर, नाम या मोबाइल नंबर', 'Request number, name or mobile number')}
+          />
+          <div className="grid g4 collapse">
+            <Select
+              label={t('श्रेणी', 'Category')} value={param('category')} onChange={(v) => setParam('category', v)}
+              options={[all, ...CATEGORIES.map((c) => ({ id: c.id, label: tl(c.name) })), { id: 'application', label: t('योजना आवेदन', 'Scheme applications') }]}
+            />
+            <Select
+              label={t('विभाग', 'Department')} value={param('department')} onChange={(v) => setParam('department', v)}
+              options={[all, ...Object.entries(DEPARTMENTS).map(([id, name]) => ({ id, label: tl(name) }))]}
+            />
+            <Select label={t('वार्ड', 'Ward')} value={param('ward')} onChange={(v) => setParam('ward', v)} options={[all, ...WARDS.map((w) => ({ id: w.id, label: tl(w.name) }))]} />
+            <Select
+              label={t('क्रम', 'Sort by')} value={query.sort} onChange={(v) => setParam('sort', v === 'newest' ? '' : v)}
+              options={[
+                { id: 'newest', label: t('नए पहले', 'Newest first') },
+                { id: 'oldest', label: t('पुराने पहले', 'Oldest first') },
+                { id: 'updated', label: t('हाल में बदले', 'Recently updated') },
+              ]}
+            />
+          </div>
+          <div className="row wrap">
+            <div className="grow"><Chips value={query.status ?? 'all'} options={options} onChange={(v) => setParam('status', v === 'all' ? '' : v)} /></div>
+            {filtered ? (
+              <button type="button" className="btn sm outline" onClick={() => { setSearch(''); setParams(query.sort === 'newest' ? {} : { sort: query.sort! }, { replace: true }); }}>
+                <Icon name="filter-remove-outline" size={17} />{t('फ़िल्टर हटाएँ', 'Clear filters')}
+              </button>
+            ) : null}
+          </div>
+        </div>
         <Loaded q={requests}>
-          {() => !list?.length ? <Empty icon="clipboard-text-off-outline" text={t('यहाँ कोई आवेदन नहीं है', 'No applications here')} /> : (
-            <div className="card table-wrap" style={{ padding: 0 }}>
+          {(rows) => rows.length === 0 ? (
+            <Empty icon="clipboard-text-search-outline" text={filtered ? t('इन फ़िल्टर से कोई आवेदन नहीं मिला', 'No requests match these filters') : t('यहाँ कोई आवेदन नहीं है', 'No applications here')} />
+          ) : (
+            // Dimmed while results for changed filters are loading.
+            <div className="card table-wrap" style={{ padding: 0, opacity: requests.isPlaceholderData ? 0.6 : 1 }}>
               <table>
                 <thead>
                   <tr>
                     <th>{t('आवेदन', 'Application')}</th><th>{t('नागरिक', 'Citizen')}</th><th>{t('विभाग', 'Department')}</th>
-                    <th>{t('तारीख', 'Date')}</th><th>{t('स्थिति', 'Status')}</th>
+                    <th>{t('तारीख', 'Date')}</th><th>{t('कितने दिन', 'Days open')}</th><th>{t('स्थिति', 'Status')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((r) => (
+                  {rows.map((r) => (
                     <tr key={r.id} className="click" onClick={() => navigate(`/admin/requests/${r.id}`)}>
                       <td><b>{tl(r.title)}</b><div className="tiny sub">{r.id}</div></td>
-                      <td>{r.citizen.name}<div className="tiny sub">+91 {r.citizen.mobile}</div></td>
+                      <td>
+                        {r.citizen.name}
+                        <div className="tiny sub">+91 {r.citizen.mobile}{r.citizen.ward ? `  •  ${tl(WARDS.find((w) => w.id === r.citizen.ward)?.name ?? { hi: '', en: '' })}` : ''}</div>
+                      </td>
                       <td>{tl(DEPARTMENTS[r.department] ?? DEPARTMENTS.panchayat)}</td>
                       <td className="sub">{fmtDate(r.createdAt)}</td>
+                      <td><Age r={r} /></td>
                       <td><StatusBadge r={r} /></td>
                     </tr>
                   ))}
@@ -346,7 +438,11 @@ export function AdminUsers() {
                     <td>+91 {u.mobile}</td>
                     <td>{label(OCCUPATIONS, u.occupation)}</td>
                     <td>{label(WARDS, u.ward)}</td>
-                    <td className="num-cell">{requests.data ? requests.data.filter((r) => r.citizen.mobile === u.mobile).length : '…'}</td>
+                    <td className="num-cell">
+                      <Link to={`/admin/requests?q=${u.mobile}`} style={{ color: 'var(--blue)', fontWeight: 700 }} title={t('इस नागरिक के आवेदन देखें', "View this citizen's requests")}>
+                        {requests.data ? requests.data.filter((r) => r.citizen.mobile === u.mobile).length : '…'}
+                      </Link>
+                    </td>
                     <td>
                       <button className="btn sm outline" style={tint(u.active ? 'var(--red)' : 'var(--green)')} disabled={setActive.isPending} onClick={() => setActive.mutate({ id: u.id, active: !u.active })}>
                         {u.active ? t('निष्क्रिय करें', 'Deactivate') : t('सक्रिय करें', 'Activate')}

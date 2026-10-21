@@ -1,8 +1,9 @@
-import { MutationCache, QueryCache, QueryClient, useMutation, useQuery } from '@tanstack/react-query';
-import { useStore } from '../store';
+import { MutationCache, QueryCache, QueryClient, keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { Baseline } from '../data';
+import { useStore } from '../store';
 import {
-  AccountFilter, ApiError, CitizenDetails, NewAdmin, NewComplaint, NewNotice, ProfilePatch, SchemeInput, Session, StatusUpdate, WorkInput, api,
+  AccountFilter, ApiError, CitizenDetails, NewAdmin, NewComplaint, NewNotice, ProfilePatch, RequestQuery, SchemeInput, Session, StatusUpdate,
+  WorkInput, api,
 } from './index';
 
 /** A 401 means the session is over (logged out elsewhere, or deactivated): drop it everywhere. */
@@ -36,6 +37,7 @@ function endSession() {
 const keys = {
   me: ['me'],
   requests: ['requests'],
+  requestList: (query: RequestQuery) => ['requests', 'list', query],
   request: (id: string) => ['requests', id],
   notices: ['notices'],
   schemes: ['schemes'],
@@ -92,7 +94,13 @@ export const useUpdateProfile = () => useMutation({
 
 // ---------- Requests ----------
 
-export const useRequests = (enabled = true) => useQuery({ queryKey: keys.requests, queryFn: () => api.listRequests(), enabled });
+/** The request list, filtered and sorted by the server. While new filters load, the previous results stay on screen. */
+export const useRequests = (query: RequestQuery = {}, enabled = true) => useQuery({
+  queryKey: keys.requestList(query),
+  queryFn: () => api.listRequests(query),
+  enabled,
+  placeholderData: keepPreviousData,
+});
 
 export const useRequest = (id: string) => useQuery({ queryKey: keys.request(id), queryFn: () => api.getRequest(id) });
 

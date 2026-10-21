@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useConfirmResolution, useRequest, useRequests } from '../api/hooks';
 import { Chips, Empty, Icon, Loaded, PageHead, RequestRow, RequestSummary, Timeline, tint, useErrorText } from '../components/ui';
-import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
+import { RequestFilter, matchesFilter } from '../data';
+import { useFilterOptions } from '../filters';
 import { useT } from '../store';
 
 export function Requests() {

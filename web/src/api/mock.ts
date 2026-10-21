@@ -1,7 +1,7 @@
 import {
   Account, BASELINE_FIELDS, Baseline, CATEGORIES, DEPARTMENTS, DevelopmentWork, FIRST_NEW_SEQ, L, NOTICE_TAGS, Notice, Request, Role,
   SCHEME_GROUPS, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS, Scheme, TAG_VISUAL, isStaff,
-  nextStatuses,
+  matchesFilter, nextStatuses, updatedAt,
 } from '../data';
 import { Api, ApiError, NewNotice, SchemeInput, User, WorkInput } from './types';
 
@@ -35,8 +35,13 @@ const seed = (): Db => structuredClone({
 function load(): Db {
   try {
     const raw = localStorage.getItem(DB_KEY);
-    // Collections added since the data was saved start from the sample data.
-    if (raw) return { ...seed(), ...(JSON.parse(raw) as Partial<Db>) };
+    if (raw) {
+      // Collections added since the data was saved start from the sample data.
+      const db: Db = { ...seed(), ...(JSON.parse(raw) as Partial<Db>) };
+      // Requests saved before wards were recorded on them take the citizen's current ward.
+      for (const r of db.requests) r.citizen.ward ??= db.accounts.find((a) => a.mobile === r.citizen.mobile)?.ward;
+      return db;
+    }
   } catch {
     // Unreadable storage falls back to the sample data.
   }
@@ -137,7 +142,7 @@ export function createMockApi(getToken: () => string | null): Api {
       status: 'submitted',
       createdAt: now,
       history: [{ status: 'submitted', at: now }],
-      citizen: { name: user.name, mobile: user.mobile },
+      citizen: { name: user.name, mobile: user.mobile, ward: user.ward },
     };
     db.requests.unshift(req);
     db.seq += 1;
@@ -210,11 +215,21 @@ export function createMockApi(getToken: () => string | null): Api {
         return toUser(acc);
       }),
 
-    listRequests: () =>
+    listRequests: ({ q, status = 'all', category, department, ward, sort = 'newest' } = {}) =>
       call((db) => {
         const user = auth(db);
-        const list = isStaff(user) ? db.requests : db.requests.filter((r) => r.citizen.mobile === user.mobile);
-        return [...list].sort((a, b) => b.createdAt - a.createdAt);
+        const text = q?.trim().toLowerCase();
+        const digits = q?.replace(/\D/g, '');
+        const list = db.requests.filter((r) =>
+          (isStaff(user) || r.citizen.mobile === user.mobile) &&
+          matchesFilter(r, status) &&
+          (!category || (category === 'application' ? r.kind === 'application' : r.categoryId === category)) &&
+          (!department || r.department === department) &&
+          (!ward || r.citizen.ward === ward) &&
+          (!text || r.id.toLowerCase().includes(text) || r.citizen.name.toLowerCase().includes(text) || (!!digits && digits.length >= 3 && r.citizen.mobile.includes(digits))),
+        );
+        const key = sort === 'updated' ? updatedAt : (r: Request) => r.createdAt;
+        return list.sort((a, b) => (sort === 'oldest' ? key(a) - key(b) : key(b) - key(a)));
       }),
 
     getRequest: (id) => call((db) => findRequest(db, id, auth(db))),

@@ -58,7 +58,10 @@ were added, so it shows the earlier separate admin login)
 - Public village dashboard (roads, water, street lights, schemes, total requests, development works)
 
 **Sarpanch / admin**
-- All applications with filters; update a request's status, department and a note for the citizen
+- All applications: search by request number, name or mobile; filter by status, category,
+  department and ward; sort by date or last update; see how long each request has been open
+  (requests pending 15+ days are flagged). Filters stay in the URL, so a filtered list can be shared
+- Update a request's status, department and a note for the citizen
 - Department-wise report and analytics
 - Citizen accounts
 - Manage the content citizens see: publish, edit and remove notices; add, edit, close and remove

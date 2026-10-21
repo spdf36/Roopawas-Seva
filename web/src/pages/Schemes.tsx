@@ -12,7 +12,7 @@ export function Schemes() {
   // Visitors and citizens get open schemes only; staff also see closed ones (marked as such).
   const schemes = useSchemes();
   // Only a citizen has applications of their own to mark as "Applied".
-  const requests = useRequests(isCitizen);
+  const requests = useRequests({}, isCitizen);
   const apply = useApplyScheme();
   const errorText = useErrorText();
   const occupation = user?.occupation;

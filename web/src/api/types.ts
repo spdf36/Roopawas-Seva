@@ -1,4 +1,4 @@
-import { Account, Baseline, DevelopmentWork, L, Notice, NoticeTag, Request, Scheme, Status } from '../data';
+import { Account, Baseline, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from '../data';
 
 /** An account as the API returns it: the PIN never leaves the server. */
 export type User = Omit<Account, 'pin'>;
@@ -14,6 +14,21 @@ export type NewNotice = { tag: NoticeTag; title: L; body: L };
 export type SchemeInput = Omit<Scheme, 'id'>;
 export type WorkInput = Omit<DevelopmentWork, 'id'>;
 export type AccountFilter = 'citizen' | 'staff';
+
+export type RequestSort = 'newest' | 'oldest' | 'updated';
+
+/** Filters for the request list; sent as query parameters. Every field is optional. */
+export type RequestQuery = {
+  /** Matches the request number, the citizen's name or their mobile number. */
+  q?: string;
+  status?: RequestFilter;
+  /** A complaint category ID, or 'application' for scheme applications. */
+  category?: string;
+  department?: string;
+  ward?: string;
+  /** newest (default) / oldest by date raised, or updated = most recently changed first. */
+  sort?: RequestSort;
+};
 
 /** Public village figures: the recorded baseline plus live request counts. */
 export type VillageStats = Baseline;
@@ -57,8 +72,8 @@ export interface Api {
   updateProfile(patch: ProfilePatch): Promise<User>;
 
   // ---- Requests (complaints and scheme applications) ----
-  /** GET /requests – citizens get their own, staff get all */
-  listRequests(): Promise<Request[]>;
+  /** GET /requests?q=&status=&category=&department=&ward=&sort= – citizens get their own, staff get all */
+  listRequests(query?: RequestQuery): Promise<Request[]>;
   /** GET /requests/:id – 404 when a citizen asks for someone else's */
   getRequest(id: string): Promise<Request>;
   /** POST /requests/complaints – citizens only */

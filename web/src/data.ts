@@ -134,7 +134,7 @@ export type Request = {
   department: string;
   createdAt: number;
   history: HistoryEntry[];
-  citizen: { name: string; mobile: string };
+  citizen: { name: string; mobile: string; ward?: string }; // ward as registered when the request was raised
   confirmed?: boolean;
 };
 
@@ -147,6 +147,26 @@ export const requestVisual = (r: Request): Visual => {
 
 export const statusLabel = (r: Request): L =>
   r.status === 'resolved' && r.kind === 'application' ? l('पूर्ण', 'Completed') : STATUS[r.status].name;
+
+export const isClosed = (r: Request) => r.status === 'resolved' || r.status === 'rejected';
+
+/** Status groups used by the request filters. */
+export type RequestFilter = 'all' | 'active' | 'done' | 'rejected';
+
+export const matchesFilter = (r: Request, f: RequestFilter) =>
+  f === 'all' ||
+  (f === 'done' && r.status === 'resolved') ||
+  (f === 'rejected' && r.status === 'rejected') ||
+  (f === 'active' && !isClosed(r));
+
+/** When the request last changed (its latest history entry). */
+export const updatedAt = (r: Request) => r.history[r.history.length - 1]?.at ?? r.createdAt;
+
+/** Whole days a request has been open, or for a closed one, how many days it took to close. */
+export const daysOpen = (r: Request, now = Date.now()) => Math.floor(((isClosed(r) ? updatedAt(r) : now) - r.createdAt) / DAY);
+
+/** Open requests older than this many days are flagged as overdue. */
+export const OVERDUE_DAYS = 15;
 
 const DAY = 86400000;
 const d = (y: number, m: number, day: number) => new Date(y, m - 1, day, 10, 30).getTime();
@@ -165,15 +185,15 @@ function seed(
   };
 }
 
-const DEMO = { name: 'रामलाल शर्मा', mobile: '9876543210' };
+const DEMO = { name: 'रामलाल शर्मा', mobile: '9876543210', ward: 'w1' };
 
 export const SEED_REQUESTS: Request[] = [
   seed({ id: 'RP-2026-00127', kind: 'complaint', citizen: DEMO, categoryId: 'water', department: 'phed', title: l('पानी की समस्या', 'Water Problem'), description: 'गांव के चौक पर पानी की टंकी से पानी नहीं आ रहा है।', location: 'रूपावास, मुख्य चौक', createdAt: d(2026, 9, 12) }, 'under_review'),
-  seed({ id: 'RP-2026-00125', kind: 'complaint', citizen: { name: 'भंवरलाल जाट', mobile: '9829011223' }, categoryId: 'road', department: 'pwd', title: l('सड़क पर गड्ढे', 'Potholes on Road'), description: 'स्कूल वाली सड़क पर बड़े गड्ढे हो गए हैं, बारिश में पानी भर जाता है।', location: 'रूपावास, स्कूल रोड', createdAt: d(2026, 9, 10) }, 'forwarded'),
-  seed({ id: 'RP-2026-00121', kind: 'complaint', citizen: { name: 'सीता देवी', mobile: '9414055667' }, categoryId: 'clean', department: 'panchayat', title: l('नाली की सफाई', 'Drain Cleaning'), description: 'वार्ड 3 की नाली जाम है, गंदा पानी सड़क पर बह रहा है।', location: 'रूपावास, वार्ड 3', createdAt: d(2026, 9, 8) }, 'action_taken'),
+  seed({ id: 'RP-2026-00125', kind: 'complaint', citizen: { name: 'भंवरलाल जाट', mobile: '9829011223', ward: 'w2' }, categoryId: 'road', department: 'pwd', title: l('सड़क पर गड्ढे', 'Potholes on Road'), description: 'स्कूल वाली सड़क पर बड़े गड्ढे हो गए हैं, बारिश में पानी भर जाता है।', location: 'रूपावास, स्कूल रोड', createdAt: d(2026, 9, 10) }, 'forwarded'),
+  seed({ id: 'RP-2026-00121', kind: 'complaint', citizen: { name: 'सीता देवी', mobile: '9414055667', ward: 'w3' }, categoryId: 'clean', department: 'panchayat', title: l('नाली की सफाई', 'Drain Cleaning'), description: 'वार्ड 3 की नाली जाम है, गंदा पानी सड़क पर बह रहा है।', location: 'रूपावास, वार्ड 3', createdAt: d(2026, 9, 8) }, 'action_taken'),
   seed({ id: 'RP-2026-00118', kind: 'complaint', citizen: DEMO, categoryId: 'light', department: 'power', title: l('स्ट्रीट लाइट', 'Street Light'), description: 'मंदिर के पास की स्ट्रीट लाइट एक सप्ताह से बंद है।', location: 'रूपावास, मंदिर चौक', createdAt: d(2026, 9, 5) }, 'resolved'),
-  seed({ id: 'RP-2026-00115', kind: 'complaint', citizen: { name: 'मोहन मीणा', mobile: '9887733445' }, categoryId: 'school', department: 'education', title: l('स्कूल में पेयजल', 'Drinking Water at School'), description: 'सरकारी स्कूल में पीने के पानी की टंकी खराब है।', location: 'रा. उ. मा. विद्यालय, रूपावास', createdAt: d(2026, 9, 4) }, 'received'),
-  seed({ id: 'RP-2026-00110', kind: 'application', citizen: { name: 'किशन गुर्जर', mobile: '9660122334' }, schemeId: 'agri-subsidy', department: 'agri', title: l('कृषि अनुदान', 'Agriculture Subsidy'), description: 'कृषि अनुदान योजना के लिए आवेदन।', createdAt: d(2026, 9, 3) }, 'under_review'),
+  seed({ id: 'RP-2026-00115', kind: 'complaint', citizen: { name: 'मोहन मीणा', mobile: '9887733445', ward: 'w5' }, categoryId: 'school', department: 'education', title: l('स्कूल में पेयजल', 'Drinking Water at School'), description: 'सरकारी स्कूल में पीने के पानी की टंकी खराब है।', location: 'रा. उ. मा. विद्यालय, रूपावास', createdAt: d(2026, 9, 4) }, 'received'),
+  seed({ id: 'RP-2026-00110', kind: 'application', citizen: { name: 'किशन गुर्जर', mobile: '9660122334', ward: 'w4' }, schemeId: 'agri-subsidy', department: 'agri', title: l('कृषि अनुदान', 'Agriculture Subsidy'), description: 'कृषि अनुदान योजना के लिए आवेदन।', createdAt: d(2026, 9, 3) }, 'under_review'),
   seed({ id: 'RP-2026-00102', kind: 'application', citizen: DEMO, schemeId: 'pension', department: 'social', title: l('पेंशन सहायता', 'Pension Assistance'), description: 'पेंशन योजना के लिए आवेदन।', createdAt: d(2026, 9, 1) }, 'submitted'),
   seed({ id: 'RP-2026-00098', kind: 'application', citizen: DEMO, schemeId: 'scholarship', department: 'education', title: l('छात्रवृत्ति', 'Scholarship'), description: 'छात्रवृत्ति योजना के लिए आवेदन।', createdAt: d(2026, 8, 28) }, 'resolved'),
 ];
