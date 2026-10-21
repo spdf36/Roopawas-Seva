@@ -2,9 +2,9 @@ import { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Role, isStaff } from './data';
-import {
-  AdminAdmins, AdminHome, AdminLayout, AdminNotices, AdminPlan, AdminReports, AdminRequest, AdminRequests, AdminUsers,
-} from './pages/Admin';
+import { About } from './pages/About';
+import { AdminAdmins, AdminHome, AdminLayout, AdminReports, AdminRequest, AdminRequests, AdminUsers } from './pages/Admin';
+import { AdminFigures, AdminNotices, AdminPlan, AdminSchemes } from './pages/AdminContent';
 import { Complaint } from './pages/Complaint';
 import { Dashboard } from './pages/Dashboard';
 import { Home } from './pages/Home';
@@ -45,6 +45,7 @@ export default function App() {
         <Route path="schemes" element={<Schemes />} />
         <Route path="updates" element={<Updates />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="about" element={<About />} />
         <Route path="login" element={<GuestOnly><Login /></GuestOnly>} />
         <Route path="register" element={<GuestOnly><Register /></GuestOnly>} />
         <Route path="profile" element={<RequireRole roles={CITIZEN}><Profile /></RequireRole>} />
@@ -59,6 +60,8 @@ export default function App() {
           <Route path="plan" element={<AdminPlan />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="notices" element={<AdminNotices />} />
+          <Route path="schemes" element={<AdminSchemes />} />
+          <Route path="figures" element={<AdminFigures />} />
           <Route path="admins" element={<RequireRole roles={['superadmin']}><AdminAdmins /></RequireRole>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

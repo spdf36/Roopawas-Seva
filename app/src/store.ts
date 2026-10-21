@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   Account, CATEGORIES, FIRST_NEW_SEQ, L, Notice, NoticeTag, Request, SEED_ACCOUNTS, SEED_NOTICES, SEED_REQUESTS, Status,
-  TAG_VISUAL, findScheme,
+  TAG_VISUAL, findScheme, isStaff, nextStatuses,
 } from './data';
 
 export type Lang = 'hi' | 'en';
@@ -29,7 +29,7 @@ type State = {
   applyScheme: (schemeId: string) => string;
   setStatus: (id: string, status: Status, note?: string, department?: string) => void;
   confirmResolution: (id: string) => void;
-  addNotice: (n: { tag: NoticeTag; title: string; body: string }) => void;
+  addNotice: (n: { tag: NoticeTag; title: L; body: L }) => void;
   createAdmin: (a: NewAdmin) => 'ok' | 'exists';
   setAccountActive: (id: string, active: boolean) => void;
   removeAccount: (id: string) => void;
@@ -45,7 +45,7 @@ const SEED = { accounts: SEED_ACCOUNTS, sessionId: null, requests: SEED_REQUESTS
 export const useStore = create<State>()(
   persist(
     (set, get) => {
-      const me = () => get().accounts.find((a) => a.id === get().sessionId);
+      const me = () => findUser(get());
       const newRequest = (fields: Omit<Request, 'id' | 'status' | 'createdAt' | 'history' | 'citizen'>) => {
         const { seq, requests } = get();
         const user = me();
@@ -109,33 +109,42 @@ export const useStore = create<State>()(
           });
         },
 
+        // Only staff can change a status, and only forward along the flow (see nextStatuses).
         setStatus: (id, status, note, department) => {
-          const by = me()?.name;
+          const user = me();
+          if (!isStaff(user)) return;
           set({
             requests: get().requests.map((r) =>
-              r.id === id
+              r.id === id && nextStatuses(r.status).includes(status)
                 ? {
                     ...r,
                     status,
                     department: department ?? r.department,
                     confirmed: status === 'resolved' ? r.confirmed : false,
-                    history: [...r.history, { status, at: Date.now(), note: note?.trim() || undefined, by }],
+                    history: [...r.history, { status, at: Date.now(), note: note?.trim() || undefined, by: user?.name, byId: user?.id }],
                   }
                 : r,
             ),
           });
         },
 
-        confirmResolution: (id) =>
-          set({ requests: get().requests.map((r) => (r.id === id ? { ...r, confirmed: true } : r)) }),
+        // Only the citizen who raised a resolved request can confirm it.
+        confirmResolution: (id) => {
+          const mobile = me()?.mobile;
+          set({
+            requests: get().requests.map((r) =>
+              r.id === id && r.status === 'resolved' && r.citizen.mobile === mobile ? { ...r, confirmed: true } : r,
+            ),
+          });
+        },
 
         addNotice: ({ tag, title, body }) =>
           set({
             notices: [
               {
                 id: `n${Date.now()}`, tag, ...TAG_VISUAL[tag],
-                title: { hi: title, en: title },
-                body: { hi: body, en: body },
+                title,
+                body,
                 source: { hi: 'ग्राम पंचायत रूपावास', en: 'Gram Panchayat Roopawas' },
               },
               ...get().notices,
@@ -182,8 +191,11 @@ export const useStore = create<State>()(
   ),
 );
 
+/** The logged-in account. A deactivated account counts as logged out straight away, not just at its next login. */
+const findUser = (s: Pick<State, 'accounts' | 'sessionId'>) => s.accounts.find((a) => a.id === s.sessionId && a.active) ?? null;
+
 /** The logged-in account, or null. */
-export const useUser = () => useStore((s) => s.accounts.find((a) => a.id === s.sessionId) ?? null);
+export const useUser = () => useStore(findUser);
 
 /** Bilingual helper: `t('हिंदी', 'English')` for inline copy, `tl(obj)` for `{hi, en}` data. */
 export function useT() {

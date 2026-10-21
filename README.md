@@ -50,17 +50,25 @@ were added, so it shows the earlier separate admin login)
 - Registration: details → mobile OTP (simulated) → choose a login PIN
 - Government schemes grouped by students, farmers, women, senior citizens and job seekers, with
   the citizen's own group shown first; apply in one tap
-- Raise a complaint (category, description, photo, location) and get a request number such as
-  `RP-2026-00128`
+- Raise a complaint (category, description, photo, address and optional GPS location) and get a request
+  number such as `RP-2026-00128`. Photos are compressed on the device (a phone photo becomes ~100–350 KB)
 - Track every request through the six-step flow:
-  Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution
-- Latest notices from the government and the Panchayat
-- Public village dashboard (roads, water, street lights, schemes, total requests)
+  Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution,
+  or reopen it with a reason within 30 days if the problem is not actually fixed
+- Latest notices from the government and the Panchayat, with their dates
+- Public village dashboard (roads, water, street lights, schemes, total requests, development works)
+- Help page: how to use the service and frequently asked questions
 
 **Sarpanch / admin**
-- All applications with filters; update a request's status, department and a note for the citizen
+- All applications: search by request number, name or mobile; filter by status, category,
+  department and ward; sort by date or last update; see how long each request has been open
+  (requests pending 15+ days are flagged). Filters stay in the URL, so a filtered list can be shared
+- Update a request's status, department and a note for the citizen
 - Department-wise report and analytics
-- Village development plan, citizen accounts, and publishing notices
+- Citizen accounts
+- Manage the content citizens see: publish, edit and remove notices; add, edit, close and remove
+  schemes (a scheme with applications can only be closed); development works and their progress;
+  and the recorded figures behind the public dashboard
 
 ## Quick start
 
@@ -130,8 +138,9 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 - Notifications are simulated.
 - The logo, banner and app icon are placeholder artwork (`*/src/components/Art.tsx`,
   `app/assets/`) until the final assets are ready.
-- The sample data and rules (`data.ts`, `store.ts`, `filters.ts`, `stats.ts`) are duplicated in
-  `app/src` and `web/src`; keep both in sync until they move behind an API.
+- The website already loads all data through an API layer (`web/src/api`), backed for now by a
+  mock server in the browser; the planned Express + MongoDB backend will implement the same API.
+  The mobile app still uses its older on-device store and will be rebuilt on the backend.
 
 ## Repository layout
 

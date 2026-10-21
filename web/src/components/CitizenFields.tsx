@@ -1,5 +1,6 @@
+import { CitizenDetails } from '../api';
 import { AGE_GROUPS, L, OCCUPATIONS, WARDS } from '../data';
-import { CitizenDetails, useT } from '../store';
+import { useT } from '../store';
 import { Field, Select } from './ui';
 
 export type CitizenForm = CitizenDetails;

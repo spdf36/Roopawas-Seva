@@ -3,8 +3,9 @@
 The web portal, built with React + Vite + TypeScript. The mobile app is a separate React
 Native project in `../app`.
 
-Demo MVP: there is no backend yet. All data is sample data stored in the browser
-(localStorage), so each browser has its own copy and nothing syncs with the mobile app.
+Demo MVP: there is no backend yet. Pages talk to a typed API (`src/api`) that is currently backed
+by a mock server running in the browser (data in localStorage), so each browser has its own copy
+and nothing syncs with the mobile app. The real backend will implement the same API.
 
 ## Run it
 
@@ -41,10 +42,14 @@ page; see the main README for the full list.
 | Path | What |
 | --- | --- |
 | `src/App.tsx` | Routes |
-| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel |
+| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel, `AdminContent.tsx` its content pages (notices, schemes, works, figures) |
 | `src/components/` | Navbar/footer layout, shared UI, placeholder logo/banner (`Art.tsx`) |
 | `src/styles.css` | All styling; colours are CSS variables at the top |
-| `src/data.ts`, `src/store.ts` | Sample content and state; mirrored in `../app/src` |
+| `src/api/types.ts` | The API contract: every endpoint, its REST route and its errors |
+| `src/api/mock.ts` | In-browser mock server (enforces roles, ownership and status rules) |
+| `src/api/hooks.ts` | TanStack Query hooks the pages use for loading and saving data |
+| `src/store.ts` | Client state only: language and login session |
+| `src/data.ts` | Static catalogue (categories, schemes, statuses…), shared types and the sample data |
 
 To replace the placeholder logo and banner, swap the `Logo` and `Banner` components in
 `src/components/Art.tsx` for `<img>` tags and replace `public/favicon.png`.

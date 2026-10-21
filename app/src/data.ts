@@ -140,8 +140,12 @@ export const FLOW_HINT: Record<Status, L> = {
   rejected: l('अनुरोध अस्वीकृत', 'Request rejected'),
 };
 
-/** `by` is the name of the staff member who made the change. */
-export type HistoryEntry = { status: Status; at: number; note?: string; by?: string };
+/** `by` is the staff member's name at the time of the change (kept if the account is later removed); `byId` is their account. */
+export type HistoryEntry = { status: Status; at: number; note?: string; by?: string; byId?: string };
+
+/** Where an admin can move a request: any later step of the flow, or rejection. Resolved and rejected requests are closed. */
+export const nextStatuses = (current: Status): Status[] =>
+  current === 'resolved' || current === 'rejected' ? [] : [...FLOW.slice(FLOW.indexOf(current) + 1), 'rejected'];
 
 export type Request = {
   id: string;

@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useLogout, useUpdateProfile } from '../api/hooks';
 import { CitizenFields, CitizenForm, useValidateCitizen } from '../components/CitizenFields';
-import { Icon, PageHead, tint } from '../components/ui';
+import { Icon, PageHead, tint, useErrorText } from '../components/ui';
 import { AGE_GROUPS, Icon as IconName, L, OCCUPATIONS, WARDS } from '../data';
-import { useStore, useT, useUser } from '../store';
+import { useT, useUser } from '../store';
 
 export function Profile() {
   const { t, tl } = useT();
   const navigate = useNavigate();
   const user = useUser();
-  const updateProfile = useStore((s) => s.updateProfile);
-  const logout = useStore((s) => s.logout);
+  const updateProfile = useUpdateProfile();
+  const logout = useLogout();
   const validate = useValidateCitizen();
+  const errorText = useErrorText();
   const [form, setForm] = useState<CitizenForm | null>(null);
   const [error, setError] = useState('');
 
@@ -21,8 +23,10 @@ export function Profile() {
     const save = () => {
       const problem = validate(form, false);
       if (problem) return setError(problem);
-      updateProfile({ name: form.name.trim(), ageGroup: form.ageGroup, ward: form.ward, occupation: form.occupation, family: form.family.trim() });
-      setForm(null);
+      updateProfile.mutate(
+        { name: form.name.trim(), ageGroup: form.ageGroup, ward: form.ward, occupation: form.occupation, family: form.family.trim() },
+        { onSuccess: () => setForm(null), onError: (e) => setError(errorText(e)) },
+      );
     };
     return (
       <div className="container narrow page">
@@ -31,7 +35,9 @@ export function Profile() {
           <CitizenFields form={form} onChange={(patch) => { setForm({ ...form, ...patch }); setError(''); }} mobileEditable={false} />
           {error ? <div className="error">{error}</div> : null}
           <div className="row wrap">
-            <button type="submit" className="btn" style={tint('var(--green)')}><Icon name="content-save-outline" />{t('सेव करें', 'Save')}</button>
+            <button type="submit" className="btn" style={tint('var(--green)')} disabled={updateProfile.isPending}>
+              <Icon name={updateProfile.isPending ? 'loading' : 'content-save-outline'} spin={updateProfile.isPending} />{t('सेव करें', 'Save')}
+            </button>
             <button type="button" className="btn outline" style={tint('var(--sub)')} onClick={() => { setForm(null); setError(''); }}>{t('रद्द करें', 'Cancel')}</button>
           </div>
         </form>
@@ -66,7 +72,7 @@ export function Profile() {
             <Icon name="pencil" />{t('जानकारी बदलें', 'Edit details')}
           </button>
           <Link to="/schemes" className="btn outline" style={tint('var(--orange)')}><Icon name="bank-outline" />{t('मेरे लिए योजनाएँ देखें', 'See schemes for me')}</Link>
-          <button className="btn outline" style={tint('var(--red)')} onClick={() => { logout(); navigate('/'); }}><Icon name="logout" />{t('लॉग आउट', 'Log out')}</button>
+          <button className="btn outline" style={tint('var(--red)')} disabled={logout.isPending} onClick={() => logout.mutate(undefined, { onSettled: () => navigate('/') })}><Icon name="logout" />{t('लॉग आउट', 'Log out')}</button>
         </div>
       </div>
     </div>
