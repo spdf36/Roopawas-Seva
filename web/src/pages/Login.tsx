@@ -1,9 +1,10 @@
+import { Icon as IconName, Role, ROLE_NAME } from '@shared/data';
+import { DEMO_LOGINS } from '@shared/seed';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLogin } from '../api/hooks';
 import { Logo } from '../components/Art';
 import { Field, Icon, tint, useErrorText } from '../components/ui';
-import { DEMO_LOGINS, Icon as IconName, Role, ROLE_NAME } from '../data';
 import { useT } from '../store';
 
 const ROLE_ICON: Record<Role, IconName> = { citizen: 'account', admin: 'account-tie', superadmin: 'shield-crown' };

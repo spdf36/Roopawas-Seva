@@ -1,9 +1,11 @@
+import { Api, ApiError, MAX_PHOTO_BYTES, NewNotice, SchemeInput, User, WorkInput } from '@shared/api';
 import {
-  Account, BASELINE_FIELDS, Baseline, CATEGORIES, DEPARTMENTS, DevelopmentWork, FIRST_NEW_SEQ, L, NOTICE_TAGS, Notice, Request, Role,
-  SCHEME_GROUPS, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS, Scheme, TAG_VISUAL, isStaff,
-  Coords, REOPEN_STATUS, canReopen, matchesFilter, nextStatuses, updatedAt,
-} from '../data';
-import { Api, ApiError, MAX_PHOTO_BYTES, NewNotice, SchemeInput, User, WorkInput } from './types';
+  Account, BASELINE_FIELDS, Baseline, CATEGORIES, Coords, DEPARTMENTS, DevelopmentWork, L, NOTICE_TAGS, Notice, REOPEN_STATUS, Request, Role,
+  SCHEME_GROUPS, Scheme, TAG_VISUAL, canReopen, isStaff, matchesFilter, nextStatuses, updatedAt,
+} from '@shared/data';
+import {
+  FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS,
+} from '@shared/seed';
 
 /**
  * A stand-in for the backend that runs in the browser and keeps its "database" in localStorage.

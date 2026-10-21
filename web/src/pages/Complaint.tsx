@@ -1,8 +1,8 @@
+import { CATEGORIES, Coords, mapLink } from '@shared/data';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCreateComplaint } from '../api/hooks';
 import { Field, Icon, PageHead, Select, TextArea, tint, useErrorText } from '../components/ui';
-import { CATEGORIES, Coords, mapLink } from '../data';
 import { compressPhoto } from '../photo';
 import { useT } from '../store';
 

@@ -1,3 +1,8 @@
+import {
+  CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, OVERDUE_DAYS, ROLE_NAME, Request, RequestFilter, STATUS, Status,
+  WARDS, daysOpen, fmtDate, isClosed, nextStatuses,
+} from '@shared/data';
+import { SEED_ACCOUNTS } from '@shared/seed';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, NewAdmin, RequestQuery, RequestSort } from '../api';
@@ -7,10 +12,6 @@ import {
 import {
   Badge, Chips, Empty, Field, Icon, Loaded, PageHead, ReopenedBadge, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint, useErrorText,
 } from '../components/ui';
-import {
-  CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, OVERDUE_DAYS, ROLE_NAME, Request, RequestFilter, SEED_ACCOUNTS,
-  STATUS, Status, WARDS, daysOpen, fmtDate, isClosed, nextStatuses,
-} from '../data';
 import { useFilterOptions } from '../filters';
 import { useT, useUser } from '../store';
 

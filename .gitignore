@@ -37,6 +37,9 @@ GoogleService-Info.plist
 .env
 .env*.local
 
+# Photos uploaded to a locally running server (server/.env UPLOADS_DIR)
+server/uploads/
+
 # Logs
 npm-debug.*
 yarn-debug.*

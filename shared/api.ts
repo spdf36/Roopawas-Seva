@@ -1,4 +1,4 @@
-import { Account, Baseline, Coords, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from '../data';
+import { Account, Baseline, Coords, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from './data';
 
 /** An account as the API returns it: the PIN never leaves the server. */
 export type User = Omit<Account, 'pin'>;
@@ -7,7 +7,7 @@ export type Session = { token: string; user: User };
 export type CitizenDetails = Pick<User, 'name' | 'mobile'> & Required<Pick<User, 'ageGroup' | 'ward' | 'occupation' | 'family'>>;
 export type ProfilePatch = Partial<Omit<CitizenDetails, 'mobile'>>;
 export type NewAdmin = Pick<Account, 'name' | 'loginId' | 'pin' | 'mobile'> & { designation: string };
-/** `photo` is a JPEG data: URL, compressed on the device (see src/photo.ts). */
+/** `photo` is a JPEG data: URL, compressed on the device (see web/src/photo.ts). */
 export type NewComplaint = { categoryId: string; description: string; location: string; coords?: Coords; photo?: string };
 export type StatusUpdate = { status: Status; note?: string; department?: string };
 /** Text in both languages; a blank English text falls back to the Hindi one on the server. */
@@ -44,6 +44,7 @@ export type ErrorCode =
   | 'in_use' // cannot delete: other records still refer to it (e.g. a scheme with applications)
   | 'invalid' // the request body failed validation
   | 'too_large' // 413: the upload (e.g. a photo) is too big
+  | 'server_error' // 500: something unexpected failed on the server
   | 'network'; // the server could not be reached
 
 /** Largest photo the server accepts, as the length of its data: URL (about 525 KB of image). */

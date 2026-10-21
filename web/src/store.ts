@@ -1,7 +1,7 @@
+import type { Session, User } from '@shared/api';
+import { L } from '@shared/data';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { Session, User } from './api/types';
-import { L } from './data';
 
 export type Lang = 'hi' | 'en';
 

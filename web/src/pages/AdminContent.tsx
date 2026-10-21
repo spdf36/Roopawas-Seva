@@ -1,3 +1,4 @@
+import { BASELINE_FIELDS, Baseline, DEPARTMENTS, NOTICE_TAGS, NoticeTag, SCHEME_GROUPS, Scheme, fmtDate } from '@shared/data';
 import { ReactNode, useState } from 'react';
 import { ApiError, NewNotice, SchemeInput, WorkInput } from '../api';
 import {
@@ -5,7 +6,6 @@ import {
   useUpdateBaseline, useWorks,
 } from '../api/hooks';
 import { Badge, BiField, Bubble, Field, Icon, Loaded, PageHead, Select, tint, useErrorText } from '../components/ui';
-import { BASELINE_FIELDS, Baseline, DEPARTMENTS, NOTICE_TAGS, NoticeTag, SCHEME_GROUPS, Scheme, fmtDate } from '../data';
 import { useT } from '../store';
 
 // Staff pages for the content citizens see: notices, schemes, development works and the

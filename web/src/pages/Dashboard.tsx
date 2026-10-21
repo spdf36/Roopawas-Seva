@@ -1,6 +1,6 @@
+import { Icon as IconName } from '@shared/data';
 import { useVillageStats, useWorks } from '../api/hooks';
 import { Icon, Loaded, PageHead } from '../components/ui';
-import { Icon as IconName } from '../data';
 import { useT } from '../store';
 
 export function Dashboard() {

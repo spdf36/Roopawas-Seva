@@ -145,7 +145,9 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 ## Repository layout
 
 ```
-app/    React Native mobile app (Expo)
-web/    React website (Vite)
-docs/   Concept board, app walkthrough video, screenshots
+web/     React website (Vite)
+server/  Backend API (Express + MongoDB), being built
+shared/  Types, rules, API contract and sample data used by web and server
+app/     React Native mobile app (Expo)
+docs/    Concept board, app walkthrough video, screenshots
 ```

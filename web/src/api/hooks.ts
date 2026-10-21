@@ -1,5 +1,5 @@
+import { Baseline } from '@shared/data';
 import { MutationCache, QueryCache, QueryClient, keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import { Baseline } from '../data';
 import { useStore } from '../store';
 import {
   AccountFilter, ApiError, CitizenDetails, NewAdmin, NewComplaint, NewNotice, ProfilePatch, RequestQuery, SchemeInput, Session, StatusUpdate,

@@ -1,7 +1,7 @@
+import { Role, isStaff } from '@shared/data';
 import { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Role, isStaff } from './data';
 import { About } from './pages/About';
 import { AdminAdmins, AdminHome, AdminLayout, AdminReports, AdminRequest, AdminRequests, AdminUsers } from './pages/Admin';
 import { AdminFigures, AdminNotices, AdminPlan, AdminSchemes } from './pages/AdminContent';

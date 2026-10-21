@@ -1,7 +1,7 @@
+import { NOTICE_TAGS, NoticeTag, fmtDate } from '@shared/data';
 import { useState } from 'react';
 import { useNotices } from '../api/hooks';
 import { Chips, Empty, Icon, Loaded, PageHead } from '../components/ui';
-import { NOTICE_TAGS, NoticeTag, fmtDate } from '../data';
 import { useT } from '../store';
 
 export function Updates() {

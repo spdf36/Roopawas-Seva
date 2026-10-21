@@ -1,7 +1,7 @@
+import { Role, isStaff } from '@shared/data';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useLogout, useResetDemo, useSessionCheck } from '../api/hooks';
-import { Role, isStaff } from '../data';
 import { useT, useUser } from '../store';
 import { Logo } from './Art';
 import { Icon, LangToggle, tint } from './ui';

@@ -1,10 +1,10 @@
+import {
+  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, mapLink, requestVisual, statusLabel,
+} from '@shared/data';
 import { UseQueryResult } from '@tanstack/react-query';
 import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api';
-import {
-  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, mapLink, requestVisual, statusLabel,
-} from '../data';
 import { useStore, useT } from '../store';
 
 export function Icon({ name, size = 20, color, style, spin }: { name: IconName; size?: number; color?: string; style?: CSSProperties; spin?: boolean }) {
@@ -26,6 +26,7 @@ export function useErrorText() {
       case 'in_use': return t('इसे हटाया नहीं जा सकता क्योंकि इससे जुड़े आवेदन मौजूद हैं।', 'This cannot be deleted because applications refer to it.');
       case 'invalid': return t('जानकारी सही नहीं है। कृपया जाँचकर फिर से भेजें।', 'Some details are not valid. Please check and try again.');
       case 'too_large': return t('फोटो बहुत बड़ी है या जगह भर गई है। कृपया छोटी फोटो चुनें या फोटो हटाकर भेजें।', 'The photo is too large, or storage is full. Choose a smaller photo or send without one.');
+      case 'server_error': return t('सर्वर पर कुछ गलत हो गया। कृपया थोड़ी देर बाद फिर से प्रयास करें।', 'Something went wrong on the server. Please try again in a little while.');
       default: return t('सर्वर से संपर्क नहीं हो सका। कृपया फिर से प्रयास करें।', 'Could not reach the server. Please try again.');
     }
   };

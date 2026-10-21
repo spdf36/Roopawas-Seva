@@ -1,6 +1,6 @@
+import { Icon as IconName, L, OVERDUE_DAYS, REOPEN_DAYS, l } from '@shared/data';
 import { Link } from 'react-router-dom';
 import { Icon, PageHead, tint } from '../components/ui';
-import { Icon as IconName, L, OVERDUE_DAYS, REOPEN_DAYS, l } from '../data';
 import { useT } from '../store';
 
 // Help for citizens. Every answer here describes what the portal actually does today; keep it in step

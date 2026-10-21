@@ -45,11 +45,10 @@ page; see the main README for the full list.
 | `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel, `AdminContent.tsx` its content pages (notices, schemes, works, figures) |
 | `src/components/` | Navbar/footer layout, shared UI, placeholder logo/banner (`Art.tsx`) |
 | `src/styles.css` | All styling; colours are CSS variables at the top |
-| `src/api/types.ts` | The API contract: every endpoint, its REST route and its errors |
 | `src/api/mock.ts` | In-browser mock server (enforces roles, ownership and status rules) |
 | `src/api/hooks.ts` | TanStack Query hooks the pages use for loading and saving data |
 | `src/store.ts` | Client state only: language and login session |
-| `src/data.ts` | Static catalogue (categories, schemes, statuses…), shared types and the sample data |
+| `../shared/` | Imported as `@shared/...`: types, catalogue and rules (`data.ts`), the API contract (`api.ts`), sample data (`seed.ts`) – shared with the server |
 
 To replace the placeholder logo and banner, swap the `Logo` and `Banner` components in
 `src/components/Art.tsx` for `<img>` tags and replace `public/favicon.png`.

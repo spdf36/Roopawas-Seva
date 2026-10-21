@@ -1,9 +1,9 @@
+import { C } from '@shared/colors';
+import { DEPARTMENTS, SCHEME_GROUPS } from '@shared/data';
 import { Link } from 'react-router-dom';
 import { useApplyScheme, useRequests, useSchemes } from '../api/hooks';
 import { Badge, Bubble, Empty, Icon, Loaded, NeedLogin, PageHead, tint, useErrorText } from '../components/ui';
-import { DEPARTMENTS, SCHEME_GROUPS } from '../data';
 import { useT, useUser } from '../store';
-import { C } from '../theme';
 
 export function Schemes() {
   const { t, tl } = useT();
