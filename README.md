@@ -75,7 +75,14 @@ were added, so it shows the earlier separate admin login)
 Requires Node.js 20.19 or newer (22 LTS recommended).
 
 ```bash
-# Website – http://localhost:5173
+# Backend – http://localhost:4000 (copy server/.env.example to server/.env and fill it in first)
+cd server
+npm install
+npm run seed             # demo data (DEMO_MODE=true); or `npm run setup` for a real database
+npm run dev
+
+# Website – http://localhost:5173 (copy web/.env.example to web/.env so it uses the backend;
+# without it the website runs on a built-in mock with sample data in the browser)
 cd web
 npm install
 npm run dev
@@ -130,17 +137,14 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 
 ## Current limitations
 
-- **No backend yet.** All data is sample data stored on the device (AsyncStorage in the app,
-  localStorage on the website). The app and website do not share data, and each phone or browser
-  has its own copy.
-- **Logins are for demonstration only.** OTP is simulated, and accounts and PINs are stored in plain
-  text on the device. Real authentication needs the backend.
+- **Not deployed yet.** The website and the backend (`server/`, Express + MongoDB Atlas) work together
+  locally. The mobile app still keeps its own sample data on the phone until it is rebuilt on the backend.
+- **No SMS provider yet.** Outside demo mode, registration OTPs are written to the server log.
+- **The website's mock and the mobile app** (until it is rebuilt) keep accounts and PINs in plain text on
+  the device, for demos only. With the backend, PINs are stored hashed and logins are real.
 - Notifications are simulated.
 - The logo, banner and app icon are placeholder artwork (`*/src/components/Art.tsx`,
   `app/assets/`) until the final assets are ready.
-- The website already loads all data through an API layer (`web/src/api`), backed for now by a
-  mock server in the browser; the planned Express + MongoDB backend will implement the same API.
-  The mobile app still uses its older on-device store and will be rebuilt on the backend.
 
 ## Repository layout
 

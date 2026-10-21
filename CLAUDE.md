@@ -23,7 +23,15 @@ the changed files, a `git commit` with a suggested message, and `git push`. The 
 | `app/` | Mobile app (Android APK) | Expo SDK 57, React Native, Expo Router, Zustand (AsyncStorage) |
 | `docs/` | Concept board, walkthrough video, screenshots | |
 
-**Plan:** finish the website → build the backend → rebuild the app on top of the backend.
+**Plan:** finish the website → build the backend → connect the website to it (stage 6) → village Yojnas
+(below) → rebuild the app on top of the backend. No live deployment until all of that works locally.
+
+**Village Yojnas (planned):** "Development works" become Yojnas: funds by source (central / state / …)
+with sanctioned amount and instalments received; expenses (date, purpose, amount, category, optional bill
+photo); status Proposed / Processing / On hold / Active / Completed; per-yojna approval levels defined by
+staff (e.g. Panchayat → Samiti → District → State → Central) with the current level shown while
+Processing or On hold. Everyone, including visitors, can view it; staff change it. New features like this
+are built for the real server only; the website's mock keeps the older features working offline.
 The backend will be **MERN with TypeScript**: Express + MongoDB Atlas (Mongoose), run with `tsx`. The
 Atlas connection string goes in the server's `.env` (never committed). Decisions:
 - Code in `server/` in this repo; types and rules used by both website and server live in `shared/`.
@@ -50,7 +58,7 @@ don't port website changes to it.
 ## Commands
 
 ```bash
-# Website
+# Website (web/.env VITE_API_URL=http://localhost:4000 uses the server; empty = in-browser mock)
 cd web && npm install
 npm run dev          # http://localhost:5173
 npm run build        # typecheck + production build

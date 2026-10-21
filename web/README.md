@@ -3,16 +3,24 @@
 The web portal, built with React + Vite + TypeScript. The mobile app is a separate React
 Native project in `../app`.
 
-Demo MVP: there is no backend yet. Pages talk to a typed API (`src/api`) that is currently backed
-by a mock server running in the browser (data in localStorage), so each browser has its own copy
-and nothing syncs with the mobile app. The real backend will implement the same API.
+Pages talk to a typed API (`src/api`, contract in `../shared/api.ts`) that is served either by the real
+backend in `../server` or by a mock that runs in the browser:
+
+- **With the server:** set `VITE_API_URL` in `web/.env` (copy `.env.example`) to the server's address,
+  e.g. `http://localhost:4000`, and start the server (`cd ../server && npm run dev`). The server's
+  `WEB_ORIGIN` must include this website's address (`http://localhost:5173` by default).
+- **Without it:** leave `VITE_API_URL` empty and the website runs on its mock: sample data kept in the
+  browser (localStorage), nothing shared between browsers. Handy for working on the UI offline.
+
+Demo logins, the "any 4 digits" OTP hint and **Reset demo** only appear when the server is in demo mode
+(the mock always is).
 
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
-npm run build      # typecheck + production build -> dist/
+npm run build      # typecheck + production build -> dist/ (VITE_API_URL is baked in at build time)
 npm run preview    # serve the production build locally
 ```
 

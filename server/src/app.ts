@@ -1,4 +1,4 @@
-import { ApiError, ErrorCode } from '@shared/api';
+import { ApiError, ErrorCode, ServerInfo } from '@shared/api';
 import cors from 'cors';
 import express, { ErrorRequestHandler } from 'express';
 import mongoose from 'mongoose';
@@ -27,6 +27,11 @@ export function createApp() {
   app.get('/health', (_req, res) => {
     const db = dbReady();
     res.status(db ? 200 : 503).json({ ok: db, db: db ? 'connected' : 'disconnected', demoMode: config.demoMode });
+  });
+
+  app.get('/info', (_req, res) => {
+    const info: ServerInfo = { demoMode: config.demoMode };
+    res.json(info);
   });
 
   app.use('/auth', authRouter);

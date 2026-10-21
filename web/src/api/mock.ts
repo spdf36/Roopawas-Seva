@@ -150,6 +150,9 @@ export function createMockApi(getToken: () => string | null): Api {
   const mobileTaken = (db: Db, mobile: string) => db.accounts.some((a) => a.mobile === mobile || normaliseLoginId(a.loginId) === mobile);
 
   return {
+    // The mock is always a demo: sample data, demo logins, any OTP.
+    serverInfo: () => call(() => ({ demoMode: true })),
+
     login: (loginId, pin) =>
       call((db) => {
         const key = normaliseLoginId(loginId);

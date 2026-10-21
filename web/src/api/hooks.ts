@@ -49,6 +49,9 @@ const keys = {
 
 const invalidate = (...queryKeys: string[][]) => Promise.all(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 
+/** Whether the server is a demo (shows demo logins, the any-OTP hint and Reset demo). Fetched once. */
+export const useServerInfo = () => useQuery({ queryKey: ['info'], queryFn: () => api.serverInfo(), staleTime: Infinity });
+
 // ---------- Auth ----------
 
 /** Re-checks the stored session with the server (and refreshes the user) whenever the site loads. */

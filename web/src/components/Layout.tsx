@@ -1,7 +1,7 @@
 import { Role, isStaff } from '@shared/data';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useLogout, useResetDemo, useSessionCheck } from '../api/hooks';
+import { useLogout, useResetDemo, useServerInfo, useSessionCheck } from '../api/hooks';
 import { useT, useUser } from '../store';
 import { Logo } from './Art';
 import { Icon, LangToggle, tint } from './ui';
@@ -25,6 +25,7 @@ export function Layout() {
   const user = useUser();
   const logout = useLogout();
   const resetDemo = useResetDemo();
+  const demo = useServerInfo().data?.demoMode;
   const [open, setOpen] = useState(false);
   useSessionCheck();
 
@@ -88,15 +89,18 @@ export function Layout() {
             <div>{t('ग्राम पंचायत रूपावास की डिजिटल सेवा', 'The digital service of Gram Panchayat Roopawas')}</div>
           </div>
           <div>{t('मिलकर बनाएं बेहतर रूपावास', 'Together, let us build a better Roopawas')}</div>
-          <button
-            className="btn sm outline"
-            style={{ background: 'transparent', color: '#fff', borderColor: '#7f9bd0' }}
-            title={t('नए खाते और शिकायतें हटाकर नमूना डेटा वापस लाएँ (लॉग आउट हो जाएँगे)', 'Remove new accounts and complaints and restore the sample data (logs you out)')}
-            disabled={resetDemo.isPending}
-            onClick={() => { if (window.confirm(t('डेमो डेटा रीसेट करें?', 'Reset the demo data?'))) resetDemo.mutate(undefined, { onSuccess: () => navigate('/') }); }}
-          >
-            <Icon name="refresh" size={16} />{t('डेमो रीसेट करें', 'Reset demo')}
-          </button>
+          {/* Only a demo server can be reset. */}
+          {demo ? (
+            <button
+              className="btn sm outline"
+              style={{ background: 'transparent', color: '#fff', borderColor: '#7f9bd0' }}
+              title={t('नए खाते और शिकायतें हटाकर नमूना डेटा वापस लाएँ (लॉग आउट हो जाएँगे)', 'Remove new accounts and complaints and restore the sample data (logs you out)')}
+              disabled={resetDemo.isPending}
+              onClick={() => { if (window.confirm(t('डेमो डेटा रीसेट करें?', 'Reset the demo data?'))) resetDemo.mutate(undefined, { onSuccess: () => navigate('/') }); }}
+            >
+              <Icon name="refresh" size={16} />{t('डेमो रीसेट करें', 'Reset demo')}
+            </button>
+          ) : null}
         </div>
       </footer>
     </>

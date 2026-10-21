@@ -16,6 +16,9 @@ export type SchemeInput = Omit<Scheme, 'id'>;
 export type WorkInput = Omit<DevelopmentWork, 'id'>;
 export type AccountFilter = 'citizen' | 'staff';
 
+/** `demoMode`: sample data, demo logins, any-4-digit OTPs and the Reset demo button. */
+export type ServerInfo = { demoMode: boolean };
+
 export type RequestSort = 'newest' | 'oldest' | 'updated';
 
 /** Filters for the request list; sent as query parameters. Every field is optional. */
@@ -65,6 +68,9 @@ export class ApiError extends Error {
  * never only in the UI.
  */
 export interface Api {
+  /** GET /info – public: how this server is set up (e.g. demo mode shows the demo logins and Reset demo) */
+  serverInfo(): Promise<ServerInfo>;
+
   // ---- Auth ----
   /** POST /auth/login { loginId, pin } → 401 invalid_login, 403 inactive, 429 rate_limited */
   login(loginId: string, pin: string): Promise<Session>;

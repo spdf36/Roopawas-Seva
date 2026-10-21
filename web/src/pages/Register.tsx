@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api';
-import { useRegister, useSendOtp } from '../api/hooks';
+import { useRegister, useSendOtp, useServerInfo } from '../api/hooks';
 import { CitizenFields, CitizenForm, EMPTY_CITIZEN, useValidateCitizen } from '../components/CitizenFields';
 import { Field, Icon, PageHead, tint, useErrorText } from '../components/ui';
 import { useT } from '../store';
@@ -10,6 +10,7 @@ import { useT } from '../store';
 export function Register() {
   const { t } = useT();
   const sendOtp = useSendOtp();
+  const demo = useServerInfo().data?.demoMode;
   const register = useRegister();
   const validate = useValidateCitizen();
   const errorText = useErrorText();
@@ -63,7 +64,7 @@ export function Register() {
         <form className="card stack" onSubmit={(e) => { e.preventDefault(); verifyOtp(); }}>
           <p className="center">{t(`+91 ${form.mobile} पर भेजा गया 4 अंकों का OTP डालें`, `Enter the 4-digit OTP sent to +91 ${form.mobile}`)}</p>
           <Field label="OTP" required value={otp} autoFocus inputMode="numeric" maxLength={4} placeholder="• • • •" onChange={(e) => { setOtp(digits(e.target.value)); setError(''); }} style={pinStyle} />
-          <div className="demo-hint">{t('डेमो: कोई भी 4 अंक डालें (असली SMS नहीं भेजा जाता)', 'Demo: enter any 4 digits (no real SMS is sent)')}</div>
+          {demo ? <div className="demo-hint">{t('डेमो: कोई भी 4 अंक डालें (असली SMS नहीं भेजा जाता)', 'Demo: enter any 4 digits (no real SMS is sent)')}</div> : null}
           {error ? <div className="error center">{error}</div> : null}
           <button type="submit" className="btn block" style={tint('var(--green)')}><Icon name="check" />{t('सत्यापित करें', 'Verify')}</button>
           <button type="button" className="btn outline block" onClick={() => { setStep('form'); setError(''); }}>{t('नंबर बदलें', 'Change number')}</button>

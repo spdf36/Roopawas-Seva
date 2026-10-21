@@ -36,10 +36,14 @@ export const endAllSessions = (accountId: Types.ObjectId) => SessionModel.delete
 export async function currentUser(req: Request): Promise<AccountDoc | undefined> {
   const token = bearerToken(req);
   if (!token) return undefined;
-  // MongoDB removes expired sessions only about once a minute, so check the time as well.
-  const session = await SessionModel.findOne({ _id: hashToken(token), expiresAt: { $gt: new Date() } }).lean();
-  if (!session) return undefined;
-  const account = await AccountModel.findById(session.accountId).lean();
+  // One round trip for the session and its account: this runs on every logged-in call, and each trip to Atlas
+  // costs well over 100 ms. MongoDB removes expired sessions only about once a minute, so check the time as well.
+  const [found] = await SessionModel.aggregate<{ account: AccountDoc[] }>([
+    { $match: { _id: hashToken(token), expiresAt: { $gt: new Date() } } },
+    { $limit: 1 },
+    { $lookup: { from: AccountModel.collection.name, localField: 'accountId', foreignField: '_id', as: 'account' } },
+  ]);
+  const account = found?.account[0];
   return account?.active ? account : undefined;
 }
 
