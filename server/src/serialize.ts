@@ -1,6 +1,7 @@
 import { User } from '@shared/api';
 import { Baseline, BASELINE_FIELDS, DevelopmentWork, Notice, Request, Scheme } from '@shared/data';
 import { AccountDoc, NoticeDoc, RequestDoc, SchemeDoc, WorkDoc } from './models';
+import { photoUrl } from './photos';
 
 // Turns stored documents into the shared API types. Everything sent to a client goes through here, so
 // fields that must never leave the server (the PIN hash, the photo's file name) are left out by design.
@@ -23,9 +24,6 @@ export const toUser = (a: AccountDoc): User => compact({
   designation: a.designation,
 });
 
-/** Where a request's photo can be fetched, relative to the API's address (GET /photos/:requestId). */
-export const photoPath = (requestId: string) => `/photos/${encodeURIComponent(requestId)}`;
-
 export const toRequest = (r: RequestDoc): Request => compact({
   id: r._id,
   kind: r.kind,
@@ -36,7 +34,8 @@ export const toRequest = (r: RequestDoc): Request => compact({
   description: r.description,
   location: r.location,
   coords: r.coords ? compact({ lat: r.coords.lat, lng: r.coords.lng, accuracy: r.coords.accuracy }) : undefined,
-  photo: r.photo ? photoPath(r._id) : undefined,
+  // A short-lived signed link, never the file name (see photos.ts).
+  photo: r.photo ? photoUrl(r._id) : undefined,
   status: r.status,
   department: r.department,
   createdAt: r.createdAt.getTime(),

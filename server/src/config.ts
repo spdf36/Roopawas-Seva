@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -19,6 +20,11 @@ export const config = {
   mongoUri: () => required('MONGODB_URI'),
   /** Database inside the cluster (Atlas connection strings often name none). */
   mongoDb: env.MONGODB_DB?.trim() || 'roopawas-seva',
+  /**
+   * Signs the short-lived photo links. Without PHOTO_SECRET a random one is made at start-up, which simply
+   * means links handed out before a restart stop working (the website fetches fresh ones).
+   */
+  photoSecret: env.PHOTO_SECRET?.trim() || randomBytes(32).toString('hex'),
   /** Where uploaded photos are stored. Must be on a persistent disk in production. */
   uploadsDir: path.resolve(import.meta.dirname, '..', env.UPLOADS_DIR ?? 'uploads'),
   /** Website origins allowed to call the API (comma-separated). */

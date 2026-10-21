@@ -5,7 +5,21 @@ implements the API contract in `../shared/api.ts`, which the website also uses; 
 `../shared`.
 
 **Status:** being built in stages. Done: project setup (stage 1), database models, demo seed and setup
-(stage 2), auth and accounts (stage 3: `/auth/*`, `/accounts/*`). Requests, content and photos follow.
+(stage 2), auth and accounts (stage 3: `/auth/*`, `/accounts/*`), requests and photos (stage 4:
+`/requests/*`, `/photos/*`). Content (notices, schemes, works, figures) follows.
+
+## Requests and photos
+
+- Request numbers (`RP-2026-00128`) come from an atomic counter, so simultaneous complaints never share a
+  number; everything is checked before a number is taken, so rejected complaints leave no gaps.
+- Status changes only go forward (`nextStatuses`) and are saved only if the request is still in the status
+  the admin saw: when two staff act at once, one succeeds and the other gets `400 invalid`.
+- Photos arrive as data: URLs (at most `MAX_PHOTO_BYTES`), must really be JPEG, PNG or WebP (checked by
+  their first bytes), and are written to `UPLOADS_DIR` under a name the server chooses.
+- Photos are shown with `<img>` tags, which cannot send the login token, so a request's `photo` is a
+  **signed link** (`/photos/RP-…?expires=…&sig=…`) handed only to people who may see the request. Links stop
+  working after 1–2 hours and cannot be altered or reused for another request. Set `PHOTO_SECRET` to keep
+  links valid across restarts.
 
 ## Logins and security
 
@@ -52,6 +66,7 @@ connection is refused.
 | `TRUST_PROXY` | Number of reverse proxies in front of the server (0 when reached directly) |
 | `WEB_ORIGIN` | Website address(es) allowed to call the API, comma-separated |
 | `UPLOADS_DIR` | Folder for uploaded photos; must be on a persistent disk in production |
+| `PHOTO_SECRET` | Optional secret for signing photo links (otherwise a new one at each start) |
 | `DEMO_MODE` | `true` enables demo logins, the reset endpoint and `npm run seed`; keep `false` for real use |
 | `SUPERADMIN_*` | The first super admin, used by `npm run setup` only |
 
@@ -84,7 +99,8 @@ Every error is JSON `{ "code": "..." }` with a matching HTTP status, using the c
 | `src/db.ts` | MongoDB connection |
 | `src/models.ts` | Mongoose models (one per collection) |
 | `src/serialize.ts` | Turns documents into the shared API types – the only way data leaves the server |
-| `src/routes/` | The endpoints, one file per area (`auth.ts`, `accounts.ts`) |
+| `src/routes/` | The endpoints, one file per area (`auth.ts`, `accounts.ts`, `requests.ts`) |
+| `src/photos.ts` | Checking and saving photos, signed photo links, and `GET /photos/:id` |
 | `src/auth.ts` | Sessions: start, end, and `authenticate(req, roles)` for routes |
 | `src/otp.ts` | Registration codes, and where an SMS provider plugs in |
 | `src/rateLimit.ts` | Attempt counters for logins and OTPs |

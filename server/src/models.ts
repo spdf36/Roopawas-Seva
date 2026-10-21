@@ -106,6 +106,8 @@ export interface RequestDoc {
   status: Status;
   department: string;
   createdAt: Date;
+  /** Time of the latest history entry, kept alongside it so the list can be sorted by it. */
+  updatedAt: Date;
   history: HistoryDoc[];
   citizen: { name: string; mobile: string; ward?: string };
   confirmed?: boolean;
@@ -126,6 +128,7 @@ const requestSchema = new Schema<RequestDoc>({
   status: { type: String, enum: STATUSES, required: true },
   department: { type: String, required: true },
   createdAt: { type: Date, required: true, default: Date.now },
+  updatedAt: { type: Date, required: true, default: Date.now },
   history: [new Schema<HistoryDoc>({
     status: { type: String, enum: STATUSES, required: true },
     at: { type: Date, required: true },
@@ -140,14 +143,15 @@ const requestSchema = new Schema<RequestDoc>({
   confirmed: Boolean,
   reopened: Number,
 });
-// A citizen's own list, and the staff list newest first (the filters narrow it further).
+// A citizen's own list, and the staff list by date raised or last change (the filters narrow it further).
 requestSchema.index({ 'citizen.mobile': 1, createdAt: -1 });
 requestSchema.index({ createdAt: -1 });
+requestSchema.index({ updatedAt: -1 });
 requestSchema.index({ schemeId: 1 });
 
 export const RequestModel = model<RequestDoc>('Request', requestSchema);
 
-/** Hands out request numbers; one document per sequence. */
+/** Hands out request numbers: `seq` is the last number used. One document per sequence. */
 const counterSchema = new Schema<{ _id: string; seq: number }>({ _id: String, seq: { type: Number, required: true } });
 export const CounterModel = model('Counter', counterSchema);
 

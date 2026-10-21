@@ -37,9 +37,11 @@ export async function loadSampleData() {
     ...r,
     _id: id,
     createdAt: new Date(createdAt),
+    updatedAt: new Date(history.at(-1)?.at ?? createdAt),
     history: history.map((h) => ({ ...h, at: new Date(h.at) })),
   })));
-  await CounterModel.create({ _id: REQUEST_COUNTER, seq: FIRST_NEW_SEQ });
+  // The counter holds the last number used; FIRST_NEW_SEQ is the next one to hand out.
+  await CounterModel.create({ _id: REQUEST_COUNTER, seq: FIRST_NEW_SEQ - 1 });
 
   await NoticeModel.insertMany(SEED_NOTICES.map(({ id: _sampleId, publishedAt, updatedAt, ...n }) => ({
     ...n,

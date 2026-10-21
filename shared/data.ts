@@ -117,7 +117,10 @@ export type Request = {
   location: string;
   /** GPS position from the citizen's device, when they shared it. */
   coords?: Coords;
-  /** A compressed JPEG as a data: URL (the backend may store it elsewhere and return a URL instead). */
+  /**
+   * Where to load the photo from. The server returns a short-lived signed link relative to the API's address
+   * (/photos/RP-…?expires=…&sig=…); the website's mock returns the data: URL itself.
+   */
   photo?: string;
   status: Status;
   department: string;

@@ -4,8 +4,10 @@ import express, { ErrorRequestHandler } from 'express';
 import mongoose from 'mongoose';
 import { config } from './config';
 import { dbReady } from './db';
+import { photosRouter } from './photos';
 import { accountsRouter } from './routes/accounts';
 import { authRouter } from './routes/auth';
+import { requestsRouter } from './routes/requests';
 
 /** The Express app, without starting a server, so it can also be used in tests. */
 export function createApp() {
@@ -26,6 +28,8 @@ export function createApp() {
 
   app.use('/auth', authRouter);
   app.use('/accounts', accountsRouter);
+  app.use('/requests', requestsRouter);
+  app.use('/photos', photosRouter);
 
   // Unknown routes answer like any other API error.
   app.use(() => {
