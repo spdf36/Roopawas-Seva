@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { Badge, Chips, Empty, Field, Icon, PageHead, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint } from '../components/ui';
 import {
   CATEGORIES, DEPARTMENTS, DESIGNATIONS, DEVELOPMENT_WORKS, FLOW, Icon as IconName, L, NOTICE_TAGS, NoticeTag, OCCUPATIONS, ROLE_NAME,
-  SEED_ACCOUNTS, STATUS, Status, WARDS, fmtDate,
+  SEED_ACCOUNTS, STATUS, Status, WARDS, fmtDate, nextStatuses,
 } from '../data';
 import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
 import { useVillageStats } from '../stats';
@@ -140,8 +140,6 @@ export function AdminRequests() {
   );
 }
 
-const CHOICES: Status[] = [...FLOW.slice(1), 'rejected'];
-
 export function AdminRequest() {
   const { t, tl } = useT();
   const { id } = useParams();
@@ -162,26 +160,40 @@ export function AdminRequest() {
     setSaved(true);
   };
 
+  const choices = nextStatuses(r.status);
+  const savedNote = saved ? <div className="ok row" style={{ gap: 6 }}><Icon name="check-circle" />{t('स्थिति अपडेट हो गई। नागरिक को उनके खाते में यह दिखेगी।', 'Status updated. The citizen will see it in their account.')}</div> : null;
+
   return (
     <>
       <PageHead icon="file-document-edit-outline" title={r.id} subtitle={t('स्थिति अपडेट करें और नागरिक को सूचित करें', 'Update status and notify the citizen')} />
       <div className="split">
         <div className="stack">
           <RequestSummary r={r} showCitizen />
-          <div className="card stack">
-            <h3>{t('स्थिति अपडेट करें', 'Update Status')}</h3>
-            <div className="row wrap" style={{ gap: 8 }}>
-              {CHOICES.map((s) => (
-                <button key={s} type="button" className={`status-pick${next === s ? ' on' : ''}`} style={tint(STATUS[s].color)} disabled={s === r.status} onClick={() => { setNext(s); setSaved(false); }}>
-                  {tl(STATUS[s].name)}
-                </button>
-              ))}
+          {choices.length === 0 ? (
+            <div className="card stack">
+              <div className="row sub" style={{ gap: 6 }}>
+                <Icon name="lock-outline" />
+                {t(`यह आवेदन बंद है (${tl(STATUS[r.status].name)})। इसकी स्थिति अब नहीं बदली जा सकती।`, `This request is closed (${tl(STATUS[r.status].name)}). Its status can no longer be changed.`)}
+              </div>
+              {savedNote}
             </div>
-            <Select label={t('संबंधित विभाग', 'Concerned department')} icon="office-building-outline" value={department ?? r.department} options={Object.entries(DEPARTMENTS).map(([key, name]) => ({ id: key, label: tl(name) }))} onChange={setDepartment} />
-            <TextArea label={t('नागरिक के लिए टिप्पणी (वैकल्पिक)', 'Note for the citizen (optional)')} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('जैसे: टीम कल सुबह मौके पर पहुँचेगी।', 'e.g. The team will visit the site tomorrow morning.')} style={{ minHeight: 80 }} />
-            <button className="btn" style={tint('var(--navy)')} disabled={!next} onClick={update}><Icon name="send" />{t('अपडेट करें और सूचित करें', 'Update & notify')}</button>
-            {saved ? <div className="ok row" style={{ gap: 6 }}><Icon name="check-circle" />{t('स्थिति अपडेट हो गई। नागरिक को उनके खाते में यह दिखेगी।', 'Status updated. The citizen will see it in their account.')}</div> : null}
-          </div>
+          ) : (
+            <div className="card stack">
+              <h3>{t('स्थिति अपडेट करें', 'Update Status')}</h3>
+              <div className="small sub">{t('स्थिति केवल आगे बढ़ाई जा सकती है।', 'Status can only move forward.')}</div>
+              <div className="row wrap" style={{ gap: 8 }}>
+                {choices.map((s) => (
+                  <button key={s} type="button" className={`status-pick${next === s ? ' on' : ''}`} style={tint(STATUS[s].color)} onClick={() => { setNext(s); setSaved(false); }}>
+                    {tl(STATUS[s].name)}
+                  </button>
+                ))}
+              </div>
+              <Select label={t('संबंधित विभाग', 'Concerned department')} icon="office-building-outline" value={department ?? r.department} options={Object.entries(DEPARTMENTS).map(([key, name]) => ({ id: key, label: tl(name) }))} onChange={setDepartment} />
+              <TextArea label={t('नागरिक के लिए टिप्पणी (वैकल्पिक)', 'Note for the citizen (optional)')} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('जैसे: टीम कल सुबह मौके पर पहुँचेगी।', 'e.g. The team will visit the site tomorrow morning.')} style={{ minHeight: 80 }} />
+              <button className="btn" style={tint('var(--navy)')} disabled={!next} onClick={update}><Icon name="send" />{t('अपडेट करें और सूचित करें', 'Update & notify')}</button>
+              {savedNote}
+            </div>
+          )}
         </div>
         <Timeline r={r} />
       </div>
@@ -336,12 +348,21 @@ export function AdminNotices() {
   const [tag, setTag] = useState<NoticeTag>('panchayat');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [titleEn, setTitleEn] = useState('');
+  const [bodyEn, setBodyEn] = useState('');
   const [sent, setSent] = useState(false);
 
+  // The English text is optional; English readers see the Hindi text when it is left blank.
   const publish = () => {
-    addNotice({ tag, title: title.trim(), body: body.trim() });
+    addNotice({
+      tag,
+      title: { hi: title.trim(), en: titleEn.trim() || title.trim() },
+      body: { hi: body.trim(), en: bodyEn.trim() || body.trim() },
+    });
     setTitle('');
     setBody('');
+    setTitleEn('');
+    setBodyEn('');
     setSent(true);
   };
 
@@ -351,8 +372,11 @@ export function AdminNotices() {
       <div className="split">
         <form className="card stack" onSubmit={(e) => { e.preventDefault(); publish(); }}>
           <Select label={t('श्रेणी', 'Category')} required value={tag} options={NOTICE_TAGS.map((x) => ({ id: x.id, label: tl(x.name) }))} onChange={(v) => setTag(v as NoticeTag)} />
-          <Field label={t('शीर्षक', 'Title')} required value={title} onChange={(e) => { setTitle(e.target.value); setSent(false); }} placeholder={t('जैसे: ग्राम सभा बैठक', 'e.g. Gram Sabha meeting')} />
-          <TextArea label={t('विवरण', 'Details')} required value={body} onChange={(e) => { setBody(e.target.value); setSent(false); }} placeholder={t('तारीख, समय और स्थान लिखें', 'Add the date, time and place')} style={{ minHeight: 80 }} />
+          <Field label={t('शीर्षक (हिंदी)', 'Title (Hindi)')} required value={title} onChange={(e) => { setTitle(e.target.value); setSent(false); }} placeholder="जैसे: ग्राम सभा बैठक" />
+          <TextArea label={t('विवरण (हिंदी)', 'Details (Hindi)')} required value={body} onChange={(e) => { setBody(e.target.value); setSent(false); }} placeholder="तारीख, समय और स्थान लिखें" style={{ minHeight: 80 }} />
+          <Field label={t('शीर्षक (अंग्रेज़ी, वैकल्पिक)', 'Title (English, optional)')} value={titleEn} onChange={(e) => { setTitleEn(e.target.value); setSent(false); }} placeholder="e.g. Gram Sabha meeting" />
+          <TextArea label={t('विवरण (अंग्रेज़ी, वैकल्पिक)', 'Details (English, optional)')} value={bodyEn} onChange={(e) => { setBodyEn(e.target.value); setSent(false); }} placeholder="Add the date, time and place" style={{ minHeight: 60 }} />
+          <div className="tiny sub">{t('अंग्रेज़ी खाली छोड़ने पर अंग्रेज़ी में भी हिंदी पाठ दिखेगा।', 'If English is left blank, the Hindi text is shown in English too.')}</div>
           <button type="submit" className="btn" style={tint('var(--purple)')} disabled={!title.trim() || !body.trim()}><Icon name="bullhorn" />{t('सूचना जारी करें', 'Publish notice')}</button>
           {sent ? <div className="ok">{t('सूचना जारी हो गई। यह नागरिकों को “सूचनाएँ” में दिखेगी।', 'Notice published. Citizens will see it under “Updates”.')}</div> : null}
         </form>

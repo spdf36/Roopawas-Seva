@@ -32,7 +32,9 @@ export function Requests() {
 export function RequestPage() {
   const { t } = useT();
   const { id } = useParams();
-  const r = useStore((s) => s.requests.find((x) => x.id === id));
+  const mobile = useUser()?.mobile;
+  // Someone else's request is treated as not found, so request numbers cannot be used to browse other citizens' details.
+  const r = useStore((s) => s.requests.find((x) => x.id === id && x.citizen.mobile === mobile));
   const confirmResolution = useStore((s) => s.confirmResolution);
 
   return (

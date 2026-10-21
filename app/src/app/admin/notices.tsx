@@ -12,12 +12,21 @@ export default function AdminNotices() {
   const [tag, setTag] = useState<NoticeTag>('panchayat');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [titleEn, setTitleEn] = useState('');
+  const [bodyEn, setBodyEn] = useState('');
   const [sent, setSent] = useState(false);
 
+  // The English text is optional; English readers see the Hindi text when it is left blank.
   const publish = () => {
-    addNotice({ tag, title: title.trim(), body: body.trim() });
+    addNotice({
+      tag,
+      title: { hi: title.trim(), en: titleEn.trim() || title.trim() },
+      body: { hi: body.trim(), en: bodyEn.trim() || body.trim() },
+    });
     setTitle('');
     setBody('');
+    setTitleEn('');
+    setBodyEn('');
     setSent(true);
   };
 
@@ -29,8 +38,11 @@ export default function AdminNotices() {
           options={NOTICE_TAGS.map((x) => ({ id: x.id, label: tl(x.name) }))}
           onChange={(v) => setTag(v as NoticeTag)}
         />
-        <Field label={t('शीर्षक', 'Title')} required value={title} onChangeText={(v) => { setTitle(v); setSent(false); }} placeholder={t('जैसे: ग्राम सभा बैठक', 'e.g. Gram Sabha meeting')} />
-        <Field label={t('विवरण', 'Details')} required multiline value={body} onChangeText={(v) => { setBody(v); setSent(false); }} placeholder={t('तारीख, समय और स्थान लिखें', 'Add the date, time and place')} style={{ minHeight: 70 }} />
+        <Field label={t('शीर्षक (हिंदी)', 'Title (Hindi)')} required value={title} onChangeText={(v) => { setTitle(v); setSent(false); }} placeholder="जैसे: ग्राम सभा बैठक" />
+        <Field label={t('विवरण (हिंदी)', 'Details (Hindi)')} required multiline value={body} onChangeText={(v) => { setBody(v); setSent(false); }} placeholder="तारीख, समय और स्थान लिखें" style={{ minHeight: 70 }} />
+        <Field label={t('शीर्षक (अंग्रेज़ी, वैकल्पिक)', 'Title (English, optional)')} value={titleEn} onChangeText={(v) => { setTitleEn(v); setSent(false); }} placeholder="e.g. Gram Sabha meeting" />
+        <Field label={t('विवरण (अंग्रेज़ी, वैकल्पिक)', 'Details (English, optional)')} multiline value={bodyEn} onChangeText={(v) => { setBodyEn(v); setSent(false); }} placeholder="Add the date, time and place" style={{ minHeight: 60 }} />
+        <Txt size={12} color={C.sub}>{t('अंग्रेज़ी खाली छोड़ने पर अंग्रेज़ी में भी हिंदी पाठ दिखेगा।', 'If English is left blank, the Hindi text is shown in English too.')}</Txt>
         <Btn label={t('सूचना जारी करें', 'Publish notice')} icon="bullhorn" color={C.purple} disabled={!title.trim() || !body.trim()} onPress={publish} />
         {sent ? <Txt w="sb" size={14} color={C.green}>{t('सूचना जारी हो गई। यह नागरिकों को “सूचनाएँ” में दिखेगी।', 'Notice published. Citizens will see it under “Latest Updates”.')}</Txt> : null}
       </Card>

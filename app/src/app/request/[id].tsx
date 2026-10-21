@@ -3,13 +3,15 @@ import { useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { RequestDetail } from '../../components/RequestDetail';
 import { Btn, Card, Empty, Screen, Txt } from '../../components/ui';
-import { useStore, useT } from '../../store';
+import { useStore, useT, useUser } from '../../store';
 import { C } from '../../theme';
 
 export default function RequestScreen() {
   const { t } = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const r = useStore((s) => s.requests.find((x) => x.id === id));
+  const mobile = useUser()?.mobile;
+  // Someone else's request is treated as not found, so request numbers cannot be used to browse other citizens' details.
+  const r = useStore((s) => s.requests.find((x) => x.id === id && x.citizen.mobile === mobile));
   const confirmResolution = useStore((s) => s.confirmResolution);
 
   return (
