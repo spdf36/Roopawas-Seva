@@ -17,13 +17,18 @@ const LINKS: { to: string; hi: string; en: string; roles?: Role[] }[] = [
 ];
 
 export function Layout() {
-  const { t } = useT();
+  const { t, lang } = useT();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const user = useUser();
   const logout = useStore((s) => s.logout);
   const [open, setOpen] = useState(false);
   const resetDemo = useStore((s) => s.resetDemo);
+
+  // Keep the page's declared language in step with the language toggle.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   // Each navigation starts at the top with the mobile menu closed.
   useEffect(() => {
