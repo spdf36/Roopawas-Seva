@@ -1,11 +1,12 @@
-import { useVillageStats } from '../api/hooks';
+import { useVillageStats, useWorks } from '../api/hooks';
 import { Icon, Loaded, PageHead } from '../components/ui';
 import { Icon as IconName } from '../data';
 import { useT } from '../store';
 
 export function Dashboard() {
-  const { t } = useT();
+  const { t, tl } = useT();
   const stats = useVillageStats();
+  const works = useWorks();
 
   const total = (label: string, value: number, color: string) => (
     <div><div className="small sub">{label}</div><b style={{ fontSize: 24, color }}>{value}</b></div>
@@ -61,6 +62,24 @@ export function Dashboard() {
             </div>
           );
         }}
+      </Loaded>
+
+      <h2 className="section-title" style={{ marginTop: 28 }}>{t('विकास कार्य', 'Development Works')}</h2>
+      <Loaded q={works}>
+        {(list) => list.length === 0 ? <p className="sub">{t('अभी कोई विकास कार्य नहीं', 'No development works yet')}</p> : (
+          <div className="grid g2 collapse">
+            {list.map((w) => {
+              const color = w.progress >= 80 ? 'var(--green)' : 'var(--amber)';
+              return (
+                <div className="card" key={w.id}>
+                  <div className="row"><b className="grow">{tl(w.name)}</b><b style={{ color }}>{w.progress}%</b></div>
+                  <div className="bar" style={{ margin: '6px 0' }}><div style={{ width: `${w.progress}%`, background: color }} /></div>
+                  {w.budget ? <div className="small sub">{t('बजट', 'Budget')}: {w.budget}</div> : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </Loaded>
     </div>
   );

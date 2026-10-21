@@ -3,7 +3,7 @@ import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, Te
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api';
 import {
-  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, Request, STATUS, Visual, fmtDate, requestVisual, statusLabel,
+  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, requestVisual, statusLabel,
 } from '../data';
 import { useStore, useT } from '../store';
 
@@ -23,6 +23,7 @@ export function useErrorText() {
       case 'forbidden': return t('आपको यह करने की अनुमति नहीं है।', 'You are not allowed to do this.');
       case 'not_found': return t('यह जानकारी नहीं मिली।', 'This could not be found.');
       case 'exists': return t('यह पहले से मौजूद है।', 'This already exists.');
+      case 'in_use': return t('इसे हटाया नहीं जा सकता क्योंकि इससे जुड़े आवेदन मौजूद हैं।', 'This cannot be deleted because applications refer to it.');
       case 'invalid': return t('जानकारी सही नहीं है। कृपया जाँचकर फिर से भेजें।', 'Some details are not valid. Please check and try again.');
       default: return t('सर्वर से संपर्क नहीं हो सका। कृपया फिर से प्रयास करें।', 'Could not reach the server. Please try again.');
     }
@@ -111,6 +112,26 @@ export function Field({ label, required, icon, ...p }: Common & InputHTMLAttribu
 
 export function TextArea({ label, required, icon, ...p }: Common & TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <div className="field"><FieldLabel label={label} required={required} icon={icon} /><textarea {...p} /></div>;
+}
+
+/** One piece of bilingual text: Hindi is required, English optional (the server falls back to Hindi). */
+export function BiField({ label, value, onChange, required, multiline, placeholder }: {
+  label: string; value: L; onChange: (v: L) => void; required?: boolean; multiline?: boolean; placeholder?: L;
+}) {
+  const { t } = useT();
+  const hi = { label: `${label} (${t('हिंदी', 'Hindi')})`, required, value: value.hi, placeholder: placeholder?.hi };
+  const en = { label: `${label} (${t('अंग्रेज़ी, वैकल्पिक', 'English, optional')})`, value: value.en, placeholder: placeholder?.en };
+  return multiline ? (
+    <>
+      <TextArea {...hi} style={{ minHeight: 70 }} onChange={(e) => onChange({ ...value, hi: e.target.value })} />
+      <TextArea {...en} style={{ minHeight: 70 }} onChange={(e) => onChange({ ...value, en: e.target.value })} />
+    </>
+  ) : (
+    <>
+      <Field {...hi} onChange={(e) => onChange({ ...value, hi: e.target.value })} />
+      <Field {...en} onChange={(e) => onChange({ ...value, en: e.target.value })} />
+    </>
+  );
 }
 
 type SelectProps = Common & Omit<SelectHTMLAttributes<HTMLSelectElement>, 'onChange'> & {

@@ -42,7 +42,7 @@ page; see the main README for the full list.
 | Path | What |
 | --- | --- |
 | `src/App.tsx` | Routes |
-| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel |
+| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel, `AdminContent.tsx` its content pages (notices, schemes, works, figures) |
 | `src/components/` | Navbar/footer layout, shared UI, placeholder logo/banner (`Art.tsx`) |
 | `src/styles.css` | All styling; colours are CSS variables at the top |
 | `src/api/types.ts` | The API contract: every endpoint, its REST route and its errors |

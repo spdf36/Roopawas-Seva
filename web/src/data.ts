@@ -33,62 +33,36 @@ export const CATEGORIES: Category[] = [
 ];
 
 // ---------- Schemes ----------
-export type Scheme = { id: string; name: L; desc: L; dept: string };
-export type SchemeGroup = Visual & { id: string; name: L; occupation: string; schemes: Scheme[] };
+/** Scheme groups are fixed: each matches a citizen occupation and has its own look. */
+export type SchemeGroup = Visual & { id: string; name: L; occupation: string };
+/** Schemes are managed by the Panchayat through the API; a closed scheme takes no new applications. */
+export type Scheme = { id: string; groupId: string; name: L; desc: L; dept: string; open: boolean };
 
 export const SCHEME_GROUPS: SchemeGroup[] = [
-  {
-    id: 'student', name: l('छात्र', 'Students'), occupation: 'student',
-    icon: 'school', color: C.blue, soft: C.blueSoft,
-    schemes: [
-      { id: 'scholarship', name: l('छात्रवृत्ति योजना', 'Scholarship Scheme'), dept: 'education', desc: l('कक्षा 9 से स्नातक तक के विद्यार्थियों के लिए वार्षिक छात्रवृत्ति।', 'Annual scholarship for students from class 9 to graduation.') },
-      { id: 'coaching', name: l('कोचिंग / प्रतियोगी परीक्षाएं', 'Coaching / Competitive Exams'), dept: 'education', desc: l('प्रतियोगी परीक्षाओं की तैयारी के लिए निःशुल्क कोचिंग सहायता।', 'Free coaching support for competitive exam preparation.') },
-      { id: 'digital', name: l('डिजिटल शिक्षा', 'Digital Education'), dept: 'education', desc: l('टैबलेट, इंटरनेट और ऑनलाइन कक्षाओं की सुविधा।', 'Tablets, internet access and online classes.') },
-    ],
-  },
-  {
-    id: 'farmer', name: l('किसान', 'Farmers'), occupation: 'farmer',
-    icon: 'sprout', color: C.green, soft: C.greenSoft,
-    schemes: [
-      { id: 'agri-subsidy', name: l('कृषि अनुदान', 'Agriculture Subsidy'), dept: 'agri', desc: l('बीज, खाद और कृषि यंत्रों पर अनुदान।', 'Subsidy on seeds, fertiliser and farm equipment.') },
-      { id: 'irrigation', name: l('सिंचाई / जल संरक्षण', 'Irrigation / Water Conservation'), dept: 'agri', desc: l('ड्रिप सिंचाई, फार्म पॉन्ड और जल संरक्षण कार्यों के लिए सहायता।', 'Support for drip irrigation, farm ponds and water conservation.') },
-      { id: 'crop-insurance', name: l('फसल बीमा', 'Crop Insurance'), dept: 'agri', desc: l('प्राकृतिक आपदा से फसल नुकसान पर बीमा सुरक्षा।', 'Insurance cover for crop loss due to natural calamities.') },
-    ],
-  },
-  {
-    id: 'women', name: l('महिला', 'Women'), occupation: 'homemaker',
-    icon: 'face-woman', color: C.orange, soft: C.orangeSoft,
-    schemes: [
-      { id: 'shg', name: l('स्वयं सहायता समूह', 'Self Help Groups'), dept: 'panchayat', desc: l('समूह बनाकर बचत और कम ब्याज पर ऋण की सुविधा।', 'Group savings and low-interest loans.') },
-      { id: 'enterprise', name: l('उद्यमिता / ट्रेनिंग', 'Entrepreneurship / Training'), dept: 'skill', desc: l('सिलाई, डेयरी और लघु उद्योग के लिए प्रशिक्षण।', 'Training for tailoring, dairy and small enterprises.') },
-      { id: 'nutrition', name: l('पोषण व स्वास्थ्य', 'Nutrition & Health'), dept: 'health', desc: l('गर्भवती महिलाओं और बच्चों के लिए पोषण सहायता।', 'Nutrition support for expecting mothers and children.') },
-    ],
-  },
-  {
-    id: 'senior', name: l('वरिष्ठ नागरिक', 'Senior Citizens'), occupation: 'senior',
-    icon: 'human-cane', color: C.navy, soft: C.blueSoft,
-    schemes: [
-      { id: 'pension', name: l('पेंशन योजना', 'Pension Scheme'), dept: 'social', desc: l('60 वर्ष से अधिक आयु के नागरिकों के लिए मासिक पेंशन।', 'Monthly pension for citizens above 60 years.') },
-      { id: 'senior-health', name: l('स्वास्थ्य सुविधा', 'Health Care'), dept: 'health', desc: l('निःशुल्क जांच, दवा और स्वास्थ्य शिविर।', 'Free check-ups, medicines and health camps.') },
-    ],
-  },
-  {
-    id: 'jobseeker', name: l('नौकरी चाहने वाले', 'Job Seekers'), occupation: 'jobseeker',
-    icon: 'briefcase-account', color: C.red, soft: C.redSoft,
-    schemes: [
-      { id: 'skill-dev', name: l('कौशल विकास', 'Skill Development'), dept: 'skill', desc: l('निःशुल्क कौशल प्रशिक्षण और प्रमाण पत्र।', 'Free skill training with certification.') },
-      { id: 'job-info', name: l('रोजगार सूचना', 'Employment Information'), dept: 'skill', desc: l('नई भर्तियों और रोजगार मेलों की जानकारी।', 'Updates on new vacancies and job fairs.') },
-    ],
-  },
+  { id: 'student', name: l('छात्र', 'Students'), occupation: 'student', icon: 'school', color: C.blue, soft: C.blueSoft },
+  { id: 'farmer', name: l('किसान', 'Farmers'), occupation: 'farmer', icon: 'sprout', color: C.green, soft: C.greenSoft },
+  { id: 'women', name: l('महिला', 'Women'), occupation: 'homemaker', icon: 'face-woman', color: C.orange, soft: C.orangeSoft },
+  { id: 'senior', name: l('वरिष्ठ नागरिक', 'Senior Citizens'), occupation: 'senior', icon: 'human-cane', color: C.navy, soft: C.blueSoft },
+  { id: 'jobseeker', name: l('नौकरी चाहने वाले', 'Job Seekers'), occupation: 'jobseeker', icon: 'briefcase-account', color: C.red, soft: C.redSoft },
 ];
 
-export const findScheme = (schemeId: string) => {
-  for (const g of SCHEME_GROUPS) {
-    const s = g.schemes.find((x) => x.id === schemeId);
-    if (s) return { group: g, scheme: s };
-  }
-  return undefined;
-};
+const scheme = (groupId: string, id: string, dept: string, name: L, desc: L): Scheme => ({ id, groupId, dept, name, desc, open: true });
+
+export const SEED_SCHEMES: Scheme[] = [
+  scheme('student', 'scholarship', 'education', l('छात्रवृत्ति योजना', 'Scholarship Scheme'), l('कक्षा 9 से स्नातक तक के विद्यार्थियों के लिए वार्षिक छात्रवृत्ति।', 'Annual scholarship for students from class 9 to graduation.')),
+  scheme('student', 'coaching', 'education', l('कोचिंग / प्रतियोगी परीक्षाएं', 'Coaching / Competitive Exams'), l('प्रतियोगी परीक्षाओं की तैयारी के लिए निःशुल्क कोचिंग सहायता।', 'Free coaching support for competitive exam preparation.')),
+  scheme('student', 'digital', 'education', l('डिजिटल शिक्षा', 'Digital Education'), l('टैबलेट, इंटरनेट और ऑनलाइन कक्षाओं की सुविधा।', 'Tablets, internet access and online classes.')),
+  scheme('farmer', 'agri-subsidy', 'agri', l('कृषि अनुदान', 'Agriculture Subsidy'), l('बीज, खाद और कृषि यंत्रों पर अनुदान।', 'Subsidy on seeds, fertiliser and farm equipment.')),
+  scheme('farmer', 'irrigation', 'agri', l('सिंचाई / जल संरक्षण', 'Irrigation / Water Conservation'), l('ड्रिप सिंचाई, फार्म पॉन्ड और जल संरक्षण कार्यों के लिए सहायता।', 'Support for drip irrigation, farm ponds and water conservation.')),
+  scheme('farmer', 'crop-insurance', 'agri', l('फसल बीमा', 'Crop Insurance'), l('प्राकृतिक आपदा से फसल नुकसान पर बीमा सुरक्षा।', 'Insurance cover for crop loss due to natural calamities.')),
+  scheme('women', 'shg', 'panchayat', l('स्वयं सहायता समूह', 'Self Help Groups'), l('समूह बनाकर बचत और कम ब्याज पर ऋण की सुविधा।', 'Group savings and low-interest loans.')),
+  scheme('women', 'enterprise', 'skill', l('उद्यमिता / ट्रेनिंग', 'Entrepreneurship / Training'), l('सिलाई, डेयरी और लघु उद्योग के लिए प्रशिक्षण।', 'Training for tailoring, dairy and small enterprises.')),
+  scheme('women', 'nutrition', 'health', l('पोषण व स्वास्थ्य', 'Nutrition & Health'), l('गर्भवती महिलाओं और बच्चों के लिए पोषण सहायता।', 'Nutrition support for expecting mothers and children.')),
+  scheme('senior', 'pension', 'social', l('पेंशन योजना', 'Pension Scheme'), l('60 वर्ष से अधिक आयु के नागरिकों के लिए मासिक पेंशन।', 'Monthly pension for citizens above 60 years.')),
+  scheme('senior', 'senior-health', 'health', l('स्वास्थ्य सुविधा', 'Health Care'), l('निःशुल्क जांच, दवा और स्वास्थ्य शिविर।', 'Free check-ups, medicines and health camps.')),
+  scheme('jobseeker', 'skill-dev', 'skill', l('कौशल विकास', 'Skill Development'), l('निःशुल्क कौशल प्रशिक्षण और प्रमाण पत्र।', 'Free skill training with certification.')),
+  scheme('jobseeker', 'job-info', 'skill', l('रोजगार सूचना', 'Employment Information'), l('नई भर्तियों और रोजगार मेलों की जानकारी।', 'Updates on new vacancies and job fairs.')),
+];
 
 // ---------- Registration options ----------
 export const AGE_GROUPS: { id: string; name: L }[] = [
@@ -152,6 +126,7 @@ export type Request = {
   title: L;
   categoryId?: string; // complaints
   schemeId?: string; // applications
+  groupId?: string; // applications: the scheme's group at the time, for the icon (the scheme may later be removed)
   description: string;
   location: string;
   photo?: string;
@@ -165,8 +140,7 @@ export type Request = {
 
 export const requestVisual = (r: Request): Visual => {
   if (r.kind === 'application') {
-    const found = r.schemeId ? findScheme(r.schemeId) : undefined;
-    return found?.group ?? { icon: 'file-document-outline', color: C.blue, soft: C.blueSoft };
+    return SCHEME_GROUPS.find((g) => g.id === r.groupId) ?? { icon: 'file-document-outline', color: C.blue, soft: C.blueSoft };
   }
   return CATEGORIES.find((c) => c.id === r.categoryId) ?? CATEGORIES[CATEGORIES.length - 1];
 };
@@ -184,6 +158,7 @@ function seed(
   const steps = FLOW.slice(0, FLOW.indexOf(upTo) + 1);
   return {
     location: 'रूपावास',
+    groupId: SEED_SCHEMES.find((s) => s.id === r.schemeId)?.groupId,
     ...r,
     status: upTo,
     history: steps.map((status, i) => ({ status, at: r.createdAt + i * DAY })),
@@ -230,8 +205,37 @@ export const SEED_NOTICES: Notice[] = [
 ];
 
 // ---------- Village dashboard ----------
-// Figures recorded before this demo's sample requests; the dashboard adds live counts on top.
-export const DASHBOARD_BASE = {
+/**
+ * Figures recorded outside this portal (before it started, or offline at the Panchayat office).
+ * Staff keep them up to date; the public dashboard adds live request counts on top.
+ */
+export type Baseline = {
+  total: number;
+  resolved: number;
+  inProgress: number;
+  forwarded: number;
+  roads: number;
+  water: number;
+  lightsFixed: number;
+  schemeApplications: number;
+  schoolWorks: number;
+  trees: number;
+};
+
+export const BASELINE_FIELDS: { id: keyof Baseline; name: L }[] = [
+  { id: 'total', name: l('कुल अनुरोध', 'Total requests') },
+  { id: 'resolved', name: l('निपटाए गए', 'Resolved') },
+  { id: 'inProgress', name: l('प्रगति पर', 'In progress') },
+  { id: 'forwarded', name: l('विभाग को भेजे', 'Sent to department') },
+  { id: 'roads', name: l('सड़क – खुले अनुरोध', 'Roads – open requests') },
+  { id: 'water', name: l('पेयजल – खुले अनुरोध', 'Drinking water – open requests') },
+  { id: 'lightsFixed', name: l('स्ट्रीट लाइट – ठीक की गईं', 'Street lights – fixed') },
+  { id: 'schemeApplications', name: l('योजना आवेदन सहायता', 'Scheme applications assisted') },
+  { id: 'schoolWorks', name: l('स्कूल सुधार कार्य', 'School repair works') },
+  { id: 'trees', name: l('लगाए गए पेड़', 'Trees planted') },
+];
+
+export const SEED_BASELINE: Baseline = {
   total: 420,
   resolved: 359,
   inProgress: 44,
@@ -244,7 +248,10 @@ export const DASHBOARD_BASE = {
   trees: 250,
 };
 
-export const DEVELOPMENT_WORKS: { id: string; name: L; progress: number; budget: string }[] = [
+/** A village development work, shown publicly with its progress (0–100 %). */
+export type DevelopmentWork = { id: string; name: L; progress: number; budget: string };
+
+export const SEED_WORKS: DevelopmentWork[] = [
   { id: 'd1', name: l('मुख्य सड़क का सीसी निर्माण', 'CC paving of the main road'), progress: 70, budget: '₹ 18.5 लाख' },
   { id: 'd2', name: l('नई पानी की टंकी (वार्ड 4)', 'New water tank (Ward 4)'), progress: 45, budget: '₹ 12 लाख' },
   { id: 'd3', name: l('सोलर स्ट्रीट लाइट – 40 पोल', 'Solar street lights – 40 poles'), progress: 90, budget: '₹ 6.4 लाख' },

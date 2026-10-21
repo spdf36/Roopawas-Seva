@@ -1,6 +1,9 @@
 import { MutationCache, QueryCache, QueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { useStore } from '../store';
-import { AccountFilter, ApiError, CitizenDetails, NewAdmin, NewComplaint, NewNotice, ProfilePatch, Session, StatusUpdate, api } from './index';
+import { Baseline } from '../data';
+import {
+  AccountFilter, ApiError, CitizenDetails, NewAdmin, NewComplaint, NewNotice, ProfilePatch, SchemeInput, Session, StatusUpdate, WorkInput, api,
+} from './index';
 
 /** A 401 means the session is over (logged out elsewhere, or deactivated): drop it everywhere. */
 function onError(error: Error) {
@@ -35,7 +38,10 @@ const keys = {
   requests: ['requests'],
   request: (id: string) => ['requests', id],
   notices: ['notices'],
+  schemes: ['schemes'],
+  works: ['works'],
   stats: ['stats'],
+  baseline: ['baseline'],
   accounts: (filter: AccountFilter) => ['accounts', filter],
 };
 
@@ -120,12 +126,56 @@ export const useConfirmResolution = () => useMutation({
 
 export const useNotices = () => useQuery({ queryKey: keys.notices, queryFn: () => api.listNotices() });
 
-export const useCreateNotice = () => useMutation({
-  mutationFn: (n: NewNotice) => api.createNotice(n),
+export const useSaveNotice = () => useMutation({
+  /** Publishes the notice, or updates it when an `id` is given. */
+  mutationFn: ({ id, notice }: { id?: string; notice: NewNotice }) => (id ? api.updateNotice(id, notice) : api.createNotice(notice)),
+  onSuccess: () => invalidate(keys.notices),
+});
+
+export const useDeleteNotice = () => useMutation({
+  mutationFn: (id: string) => api.deleteNotice(id),
   onSuccess: () => invalidate(keys.notices),
 });
 
 export const useVillageStats = () => useQuery({ queryKey: keys.stats, queryFn: () => api.getVillageStats() });
+
+export const useBaseline = () => useQuery({ queryKey: keys.baseline, queryFn: () => api.getBaseline() });
+
+export const useUpdateBaseline = () => useMutation({
+  mutationFn: (b: Baseline) => api.updateBaseline(b),
+  onSuccess: (b) => {
+    queryClient.setQueryData(keys.baseline, b);
+    return invalidate(keys.stats);
+  },
+});
+
+// ---------- Schemes and development works ----------
+
+export const useSchemes = () => useQuery({ queryKey: keys.schemes, queryFn: () => api.listSchemes() });
+
+export const useSaveScheme = () => useMutation({
+  /** Creates the scheme, or updates it when an `id` is given. */
+  mutationFn: ({ id, scheme }: { id?: string; scheme: SchemeInput }) => (id ? api.updateScheme(id, scheme) : api.createScheme(scheme)),
+  onSuccess: () => invalidate(keys.schemes),
+});
+
+export const useDeleteScheme = () => useMutation({
+  mutationFn: (id: string) => api.deleteScheme(id),
+  onSuccess: () => invalidate(keys.schemes),
+});
+
+export const useWorks = () => useQuery({ queryKey: keys.works, queryFn: () => api.listWorks() });
+
+export const useSaveWork = () => useMutation({
+  /** Creates the work, or updates it when an `id` is given. */
+  mutationFn: ({ id, work }: { id?: string; work: WorkInput }) => (id ? api.updateWork(id, work) : api.createWork(work)),
+  onSuccess: () => invalidate(keys.works),
+});
+
+export const useDeleteWork = () => useMutation({
+  mutationFn: (id: string) => api.deleteWork(id),
+  onSuccess: () => invalidate(keys.works),
+});
 
 // ---------- Accounts ----------
 

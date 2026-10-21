@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { ApiError, NewAdmin } from '../api';
 import {
-  useAccounts, useCreateAdmin, useCreateNotice, useLogout, useNotices, useRemoveAccount, useRequest, useRequests, useSetAccountActive,
-  useUpdateStatus, useVillageStats,
+  useAccounts, useCreateAdmin, useLogout, useRemoveAccount, useRequest, useRequests, useSetAccountActive, useUpdateStatus, useVillageStats,
 } from '../api/hooks';
 import { Badge, Chips, Empty, Field, Icon, Loaded, PageHead, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint, useErrorText } from '../components/ui';
 import {
-  CATEGORIES, DEPARTMENTS, DESIGNATIONS, DEVELOPMENT_WORKS, FLOW, Icon as IconName, L, NOTICE_TAGS, NoticeTag, OCCUPATIONS, ROLE_NAME,
-  Request, SEED_ACCOUNTS, STATUS, Status, WARDS, fmtDate, nextStatuses,
+  CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, ROLE_NAME, Request, SEED_ACCOUNTS, STATUS, Status, WARDS,
+  fmtDate, nextStatuses,
 } from '../data';
 import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
 import { useT, useUser } from '../store';
@@ -31,9 +30,11 @@ export function AdminLayout() {
     ...(isSuper ? [{ to: '/admin/admins', icon: 'shield-account', label: t('एडमिन प्रबंधन', 'Admin management') }] : []),
     { to: '/admin/requests', icon: 'file-document-multiple-outline', label: t('सभी आवेदन देखें', 'View all applications'), count: fresh },
     { to: '/admin/reports', icon: 'file-chart-outline', label: t('विभागवार रिपोर्ट & Analytics', 'Reports & Analytics') },
-    { to: '/admin/plan', icon: 'target', label: t('ग्राम विकास योजना', 'Village development plan') },
     { to: '/admin/users', icon: 'account-outline', label: t('उपयोगकर्ता प्रबंधन', 'User management') },
     { to: '/admin/notices', icon: 'bell-outline', label: t('सूचनाएँ / नोटिफिकेशन', 'Notices / Notifications') },
+    { to: '/admin/schemes', icon: 'bank-outline', label: t('योजना प्रबंधन', 'Scheme management') },
+    { to: '/admin/plan', icon: 'target', label: t('ग्राम विकास योजना', 'Village development plan') },
+    { to: '/admin/figures', icon: 'counter', label: t('गाँव के आँकड़े', 'Village figures') },
   ];
 
   return (
@@ -311,27 +312,6 @@ function Reports({ requests, resolved, total }: { requests: Request[]; resolved:
   );
 }
 
-export function AdminPlan() {
-  const { t, tl } = useT();
-  return (
-    <>
-      <PageHead icon="target" title={t('ग्राम विकास योजना', 'Village Development Plan')} subtitle={t('चालू विकास कार्य और उनकी प्रगति', 'Ongoing works and their progress')} />
-      <div className="stack">
-        {DEVELOPMENT_WORKS.map((w) => {
-          const color = w.progress >= 80 ? 'var(--green)' : 'var(--amber)';
-          return (
-            <div className="card" key={w.id}>
-              <div className="row"><b className="grow" style={{ fontSize: 17 }}>{tl(w.name)}</b><b style={{ color }}>{w.progress}%</b></div>
-              <div className="bar" style={{ margin: '6px 0' }}><div style={{ width: `${w.progress}%`, background: color }} /></div>
-              <div className="small sub">{t('बजट', 'Budget')}: {w.budget}</div>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
 const SEEDED = new Set(SEED_ACCOUNTS.map((a) => a.id));
 
 export function AdminUsers() {
@@ -379,69 +359,6 @@ export function AdminUsers() {
           </div>
         )}
       </Loaded>
-    </>
-  );
-}
-
-export function AdminNotices() {
-  const { t, tl } = useT();
-  const notices = useNotices();
-  const createNotice = useCreateNotice();
-  const errorText = useErrorText();
-  const [tag, setTag] = useState<NoticeTag>('panchayat');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [titleEn, setTitleEn] = useState('');
-  const [bodyEn, setBodyEn] = useState('');
-  const [sent, setSent] = useState(false);
-
-  // The English text is optional; the server shows the Hindi text to English readers when it is blank.
-  const publish = () => {
-    createNotice.mutate({ tag, title: { hi: title, en: titleEn }, body: { hi: body, en: bodyEn } }, {
-      onSuccess: () => {
-        setTitle('');
-        setBody('');
-        setTitleEn('');
-        setBodyEn('');
-        setSent(true);
-      },
-    });
-  };
-  const edited = () => { setSent(false); createNotice.reset(); };
-
-  return (
-    <>
-      <PageHead icon="bell-outline" title={t('सूचनाएँ / नोटिफिकेशन', 'Notices / Notifications')} subtitle={t('गाँव के लिए नई सूचना जारी करें', 'Publish a new notice for the village')} />
-      <div className="split">
-        <form className="card stack" onSubmit={(e) => { e.preventDefault(); publish(); }}>
-          <Select label={t('श्रेणी', 'Category')} required value={tag} options={NOTICE_TAGS.map((x) => ({ id: x.id, label: tl(x.name) }))} onChange={(v) => setTag(v as NoticeTag)} />
-          <Field label={t('शीर्षक (हिंदी)', 'Title (Hindi)')} required value={title} onChange={(e) => { setTitle(e.target.value); edited(); }} placeholder="जैसे: ग्राम सभा बैठक" />
-          <TextArea label={t('विवरण (हिंदी)', 'Details (Hindi)')} required value={body} onChange={(e) => { setBody(e.target.value); edited(); }} placeholder="तारीख, समय और स्थान लिखें" style={{ minHeight: 80 }} />
-          <Field label={t('शीर्षक (अंग्रेज़ी, वैकल्पिक)', 'Title (English, optional)')} value={titleEn} onChange={(e) => { setTitleEn(e.target.value); edited(); }} placeholder="e.g. Gram Sabha meeting" />
-          <TextArea label={t('विवरण (अंग्रेज़ी, वैकल्पिक)', 'Details (English, optional)')} value={bodyEn} onChange={(e) => { setBodyEn(e.target.value); edited(); }} placeholder="Add the date, time and place" style={{ minHeight: 60 }} />
-          <div className="tiny sub">{t('अंग्रेज़ी खाली छोड़ने पर अंग्रेज़ी में भी हिंदी पाठ दिखेगा।', 'If English is left blank, the Hindi text is shown in English too.')}</div>
-          {createNotice.isError ? <div className="error">{errorText(createNotice.error)}</div> : null}
-          <button type="submit" className="btn" style={tint('var(--purple)')} disabled={!title.trim() || !body.trim() || createNotice.isPending}>
-            <Icon name={createNotice.isPending ? 'loading' : 'bullhorn'} spin={createNotice.isPending} />{t('सूचना जारी करें', 'Publish notice')}
-          </button>
-          {sent ? <div className="ok">{t('सूचना जारी हो गई। यह नागरिकों को “सूचनाएँ” में दिखेगी।', 'Notice published. Citizens will see it under “Updates”.')}</div> : null}
-        </form>
-        <div className="stack">
-          <Loaded q={notices}>
-            {(list) => (
-              <>
-                <h3>{t('जारी सूचनाएँ', 'Published notices')} ({list.length})</h3>
-                {list.map((n) => (
-                  <div className="card" key={n.id} style={{ padding: 12 }}>
-                    <div className="row"><b className="grow">{tl(n.title)}</b><Badge label={tl(NOTICE_TAGS.find((x) => x.id === n.tag)!.name)} color={n.color} soft={n.soft} /></div>
-                    <div className="small sub">{tl(n.body)}</div>
-                  </div>
-                ))}
-              </>
-            )}
-          </Loaded>
-        </div>
-      </div>
     </>
   );
 }

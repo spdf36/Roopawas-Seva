@@ -55,12 +55,15 @@ were added, so it shows the earlier separate admin login)
 - Track every request through the six-step flow:
   Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution
 - Latest notices from the government and the Panchayat
-- Public village dashboard (roads, water, street lights, schemes, total requests)
+- Public village dashboard (roads, water, street lights, schemes, total requests, development works)
 
 **Sarpanch / admin**
 - All applications with filters; update a request's status, department and a note for the citizen
 - Department-wise report and analytics
-- Village development plan, citizen accounts, and publishing notices
+- Citizen accounts
+- Manage the content citizens see: publish, edit and remove notices; add, edit, close and remove
+  schemes (a scheme with applications can only be closed); development works and their progress;
+  and the recorded figures behind the public dashboard
 
 ## Quick start
 
