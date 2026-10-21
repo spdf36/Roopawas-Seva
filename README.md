@@ -130,8 +130,9 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 - Notifications are simulated.
 - The logo, banner and app icon are placeholder artwork (`*/src/components/Art.tsx`,
   `app/assets/`) until the final assets are ready.
-- The sample data and rules (`data.ts`, `store.ts`, `filters.ts`, `stats.ts`) are duplicated in
-  `app/src` and `web/src`; keep both in sync until they move behind an API.
+- The website already loads all data through an API layer (`web/src/api`), backed for now by a
+  mock server in the browser; the planned Express + MongoDB backend will implement the same API.
+  The mobile app still uses its older on-device store and will be rebuilt on the backend.
 
 ## Repository layout
 

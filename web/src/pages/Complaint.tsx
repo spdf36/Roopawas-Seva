@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Field, Icon, PageHead, Select, TextArea, tint } from '../components/ui';
+import { useCreateComplaint } from '../api/hooks';
+import { Field, Icon, PageHead, Select, TextArea, tint, useErrorText } from '../components/ui';
 import { CATEGORIES } from '../data';
-import { useStore, useT } from '../store';
+import { useT } from '../store';
 
 export function Complaint() {
   const { t, tl } = useT();
-  const addComplaint = useStore((s) => s.addComplaint);
+  const createComplaint = useCreateComplaint();
+  const errorText = useErrorText();
 
   const [categoryId, setCategoryId] = useState('water');
   const [description, setDescription] = useState('');
@@ -18,7 +20,11 @@ export function Complaint() {
   const submit = () => {
     if (description.trim().length < 5) return setError(t('कृपया समस्या का विवरण लिखें।', 'Please describe the problem.'));
     if (!location.trim()) return setError(t('कृपया स्थान लिखें।', 'Please enter the location.'));
-    setDoneId(addComplaint({ categoryId, description: description.trim(), location: location.trim(), photo }));
+    setError('');
+    createComplaint.mutate(
+      { categoryId, description: description.trim(), location: location.trim(), photo },
+      { onSuccess: (r) => setDoneId(r.id), onError: (e) => setError(errorText(e)) },
+    );
   };
 
   const head = <PageHead icon="alert-circle-outline" color="var(--red)" title={t('मेरी समस्या', 'My Complaint')} subtitle={t('आपकी समस्या दर्ज करें', 'Register your problem')} />;
@@ -74,7 +80,9 @@ export function Complaint() {
           </div>
           <Field label={t('स्थान (GPS / पता)', 'Location (GPS / address)')} required icon="map-marker" value={location} onChange={(e) => { setLocation(e.target.value); setError(''); }} />
           {error ? <div className="error">{error}</div> : null}
-          <button type="submit" className="btn block" style={tint('var(--orange)')}>{t('सबमिट करें', 'Submit')}</button>
+          <button type="submit" className="btn block" style={tint('var(--orange)')} disabled={createComplaint.isPending}>
+            {createComplaint.isPending ? <Icon name="loading" spin /> : null}{t('सबमिट करें', 'Submit')}
+          </button>
         </form>
       )}
     </div>

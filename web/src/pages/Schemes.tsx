@@ -1,25 +1,29 @@
 import { Link } from 'react-router-dom';
-import { Badge, Bubble, Icon, NeedLogin, PageHead, tint } from '../components/ui';
+import { useApplyScheme, useRequests } from '../api/hooks';
+import { Badge, Bubble, Icon, NeedLogin, PageHead, tint, useErrorText } from '../components/ui';
 import { DEPARTMENTS, SCHEME_GROUPS } from '../data';
-import { useStore, useT, useUser } from '../store';
+import { useT, useUser } from '../store';
 import { C } from '../theme';
 
 export function Schemes() {
   const { t, tl } = useT();
   const user = useUser();
   const isCitizen = user?.role === 'citizen';
-  const requests = useStore((s) => s.requests);
-  const applyScheme = useStore((s) => s.applyScheme);
+  // Only a citizen has applications of their own to mark as "Applied".
+  const requests = useRequests(isCitizen);
+  const apply = useApplyScheme();
+  const errorText = useErrorText();
   const occupation = user?.occupation;
   // The group matching the citizen's registered occupation is listed first.
   const groups = [...SCHEME_GROUPS].sort((a, b) => Number(b.occupation === occupation) - Number(a.occupation === occupation));
-  const applied = (schemeId: string) => requests.find((r) => r.citizen.mobile === user?.mobile && r.schemeId === schemeId);
+  const applied = (schemeId: string) => requests.data?.find((r) => r.schemeId === schemeId);
 
   return (
     <div className="container page">
       <PageHead icon="bank-outline" title={t('सरकारी योजनाएँ', 'Government Schemes')} subtitle={t('आपके लिए उपलब्ध संभावित योजनाएं', 'Schemes you may be eligible for')} />
       <div className="stack" style={{ gap: 26 }}>
         {user ? null : <NeedLogin next="/schemes" />}
+        {apply.isError ? <div className="error">{errorText(apply.error)}</div> : null}
         {groups.map((g) => (
           <section key={g.id}>
             <div className="row" style={{ marginBottom: 10 }}>
@@ -30,6 +34,7 @@ export function Schemes() {
             <div className="grid g3">
               {g.schemes.map((sc) => {
                 const existing = applied(sc.id);
+                const applying = apply.isPending && apply.variables === sc.id;
                 return (
                   <div key={sc.id} className="card stack" style={{ gap: 6 }}>
                     <h3 style={{ fontSize: 18 }}>{tl(sc.name)}</h3>
@@ -40,8 +45,8 @@ export function Schemes() {
                         <Icon name="check-circle-outline" size={17} />{t('आवेदन किया गया', 'Applied')}  •  {existing.id}
                       </Link>
                     ) : user && !isCitizen ? null : (
-                      <button className="btn sm" style={tint(g.color)} disabled={!isCitizen} onClick={() => applyScheme(sc.id)}>
-                        <Icon name="send" size={16} />{t('आवेदन करें', 'Apply')}
+                      <button className="btn sm" style={tint(g.color)} disabled={!isCitizen || requests.isPending || apply.isPending} onClick={() => apply.mutate(sc.id)}>
+                        <Icon name={applying ? 'loading' : 'send'} spin={applying} size={16} />{t('आवेदन करें', 'Apply')}
                       </button>
                     )}
                   </div>

@@ -152,7 +152,7 @@ a.card:hover, .card.link:hover { box-shadow: 0 6px 18px rgba(11, 60, 140, 0.1); 
 .total-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--border); margin: 8px 0; }
 .big { font-size: 34px; font-weight: 800; color: var(--navy); line-height: 1.1; }
 
-.list-row { display: flex; align-items: center; gap: 14px; }
+.list-row, a.card.list-row { display: flex; align-items: center; gap: 14px; }
 .check-list { display: flex; flex-direction: column; gap: 6px; }
 .check-list div { display: flex; gap: 8px; align-items: center; }
 

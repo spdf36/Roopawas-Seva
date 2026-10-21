@@ -274,7 +274,7 @@ export type Account = {
   designation?: string;
 };
 
-export const isStaff = (a: Account | null | undefined) => a?.role === 'admin' || a?.role === 'superadmin';
+export const isStaff = (a: { role: Role } | null | undefined) => a?.role === 'admin' || a?.role === 'superadmin';
 
 export const ROLE_NAME: Record<Role, L> = {
   citizen: l('नागरिक', 'Citizen'),

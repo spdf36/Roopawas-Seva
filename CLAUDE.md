@@ -17,12 +17,21 @@ the changed files, a `git commit` with a suggested message, and `git push`. The 
 
 | Folder | What | Stack |
 | --- | --- | --- |
-| `web/` | Website | React 19, Vite, React Router, Zustand (localStorage) |
+| `web/` | Website | React 19, Vite, React Router, TanStack Query, Zustand |
 | `app/` | Mobile app (Android APK) | Expo SDK 57, React Native, Expo Router, Zustand (AsyncStorage) |
 | `docs/` | Concept board, walkthrough video, screenshots | |
 
-There is no backend yet: all data is sample data stored on the device or in the browser. The plan is to
-finish the website, build a backend, then rebuild the app on top of that backend.
+**Plan:** finish the website → build the backend → rebuild the app on top of the backend.
+The backend will be **MERN with TypeScript**: Express + MongoDB Atlas (Mongoose), run with `tsx`. The
+Atlas connection string goes in the server's `.env` (never committed).
+
+**Website data flow:** pages → hooks in `web/src/api/hooks.ts` (TanStack Query) → the `Api` interface in
+`web/src/api/types.ts`. Until the backend exists, `web/src/api/mock.ts` implements that interface in the
+browser (localStorage). `types.ts` is the contract the backend must implement: each method lists its REST
+route and error codes. `web/src/store.ts` only holds the language and the session (token + user).
+
+The mobile app still has the old all-in-the-store model and is frozen until it is rebuilt on the backend;
+don't port website changes to it.
 
 ## Commands
 
@@ -43,12 +52,13 @@ side changed. For app work, also follow `app/AGENTS.md` (Expo-specific rules, e.
 
 ## Rules
 
-- **Mirrored files:** `data.ts`, `store.ts`, `stats.ts`, `filters.ts`, `theme.ts` and
-  `components/CitizenFields.tsx` exist in both `app/src` and `web/src`. Change both copies together;
-  they should differ only in platform details (storage engine, icon type, input handlers).
 - **Bilingual:** every user-facing string is Hindi + English. Use `t('हिंदी', 'English')` inline and
   `{ hi, en }` objects (`L`) in data. Hindi is the default language.
-- **Rules live in the store:** permission and business rules (who can change what, status flow) are
-  enforced in `store.ts`, not only in the UI, so they carry over when the store is replaced by API calls.
+- **Rules live behind the API:** permissions, ownership, validation and the status flow are enforced in
+  the API implementation (`mock.ts` now, the backend later), never only in the UI. The API never returns
+  PINs. When adding a feature, add the method to `types.ts` (with its route), implement it in `mock.ts`,
+  and add a hook in `hooks.ts`; pages never call `api` directly.
+- **Loading and errors:** render query data through `<Loaded q={…}>` and show mutation errors with
+  `useErrorText()` (both in `web/src/components/ui.tsx`).
 - **Request status** only moves forward along `FLOW` (or to `rejected`); see `nextStatuses` in `data.ts`.
 - Match the surrounding code style: function components, small helpers, short comments that explain why.

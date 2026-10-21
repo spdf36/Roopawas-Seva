@@ -1,10 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useNotices, useVillageStats } from '../api/hooks';
 import { Banner } from '../components/Art';
-import { Icon, tint } from '../components/ui';
-import { FLOW, Icon as IconName, L, STATUS, l } from '../data';
-import { useVillageStats } from '../stats';
-import { useStore, useT, useUser } from '../store';
-import { isStaff } from '../data';
+import { Icon, Loaded, tint } from '../components/ui';
+import { FLOW, Icon as IconName, L, STATUS, isStaff, l } from '../data';
+import { useT, useUser } from '../store';
 import { C } from '../theme';
 
 const TILES: { to: string; icon: IconName; color: string; hi: string; en: string }[] = [
@@ -60,8 +59,8 @@ export function Home() {
   const { t, tl, lang } = useT();
   const profile = useUser();
   const staff = isStaff(profile);
-  const notices = useStore((s) => s.notices);
-  const st = useVillageStats();
+  const notices = useNotices();
+  const stats = useVillageStats();
 
   return (
     <>
@@ -137,33 +136,41 @@ export function Home() {
               <h2 className="section-title grow" style={{ margin: 0 }}>{t('रूपावास – गाँव की प्रगति', 'Roopawas – Village Progress')}</h2>
               <Link to="/dashboard" className="btn sm outline">{t('पूरा देखें', 'View all')}</Link>
             </div>
-            <div className="big">{st.total}</div>
-            <div className="sub small">{t('कुल अनुरोध', 'Total requests')}</div>
-            <div className="total-bar">
-              <div style={{ flex: st.resolved, background: 'var(--green)' }} />
-              <div style={{ flex: st.inProgress, background: 'var(--amber)' }} />
-              <div style={{ flex: st.forwarded, background: 'var(--orange)' }} />
-            </div>
-            <div className="grid g3">
-              <div><div className="tiny sub">{t('निपटाए गए', 'Resolved')}</div><b style={{ color: 'var(--green)', fontSize: 20 }}>{st.resolved}</b></div>
-              <div><div className="tiny sub">{t('प्रगति पर', 'In progress')}</div><b style={{ color: 'var(--amber)', fontSize: 20 }}>{st.inProgress}</b></div>
-              <div><div className="tiny sub">{t('विभाग को भेजे', 'Sent to dept')}</div><b style={{ color: 'var(--orange)', fontSize: 20 }}>{st.forwarded}</b></div>
-            </div>
+            <Loaded q={stats}>
+              {(st) => (
+                <>
+                  <div className="big">{st.total}</div>
+                  <div className="sub small">{t('कुल अनुरोध', 'Total requests')}</div>
+                  <div className="total-bar">
+                    <div style={{ flex: st.resolved, background: 'var(--green)' }} />
+                    <div style={{ flex: st.inProgress, background: 'var(--amber)' }} />
+                    <div style={{ flex: st.forwarded, background: 'var(--orange)' }} />
+                  </div>
+                  <div className="grid g3">
+                    <div><div className="tiny sub">{t('निपटाए गए', 'Resolved')}</div><b style={{ color: 'var(--green)', fontSize: 20 }}>{st.resolved}</b></div>
+                    <div><div className="tiny sub">{t('प्रगति पर', 'In progress')}</div><b style={{ color: 'var(--amber)', fontSize: 20 }}>{st.inProgress}</b></div>
+                    <div><div className="tiny sub">{t('विभाग को भेजे', 'Sent to dept')}</div><b style={{ color: 'var(--orange)', fontSize: 20 }}>{st.forwarded}</b></div>
+                  </div>
+                </>
+              )}
+            </Loaded>
           </div>
           <div className="card stack">
             <div className="row">
               <h2 className="section-title grow" style={{ margin: 0 }}>{t('ताज़ा सूचनाएँ', 'Latest Information')}</h2>
               <Link to="/updates" className="btn sm outline">{t('सभी', 'All')}</Link>
             </div>
-            {notices.slice(0, 3).map((n) => (
-              <div className="row" key={n.id} style={{ alignItems: 'flex-start' }}>
-                <span className="bubble" style={{ width: 38, height: 38, background: n.color }}><Icon name={n.icon} color="#fff" /></span>
-                <div className="grow">
-                  <b>{tl(n.title)}</b>
-                  <div className="small sub">{tl(n.body)}</div>
+            <Loaded q={notices}>
+              {(list) => list.slice(0, 3).map((n) => (
+                <div className="row" key={n.id} style={{ alignItems: 'flex-start' }}>
+                  <span className="bubble" style={{ width: 38, height: 38, background: n.color }}><Icon name={n.icon} color="#fff" /></span>
+                  <div className="grow">
+                    <b>{tl(n.title)}</b>
+                    <div className="small sub">{tl(n.body)}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </Loaded>
           </div>
         </div>
       </section>

@@ -1,199 +1,46 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import {
-  Account, CATEGORIES, FIRST_NEW_SEQ, L, Notice, NoticeTag, Request, SEED_ACCOUNTS, SEED_NOTICES, SEED_REQUESTS, Status,
-  TAG_VISUAL, findScheme, isStaff, nextStatuses,
-} from './data';
+import type { Session, User } from './api/types';
+import { L } from './data';
 
 export type Lang = 'hi' | 'en';
 
-export type CitizenDetails = Pick<Account, 'name' | 'mobile'> & Required<Pick<Account, 'ageGroup' | 'ward' | 'occupation' | 'family'>>;
-export type NewAdmin = Pick<Account, 'name' | 'loginId' | 'pin' | 'mobile'> & { designation: string };
-
+/**
+ * Client-only state: the language and the login session. Everything else (requests, notices,
+ * accounts…) belongs to the server and is loaded through the hooks in src/api/hooks.ts.
+ */
 type State = {
-  hydrated: boolean;
   lang: Lang;
-  accounts: Account[];
-  sessionId: string | null;
-  requests: Request[];
-  notices: Notice[];
-  seq: number;
+  token: string | null;
+  /** The logged-in account as last returned by the server. */
+  user: User | null;
   setLang: (lang: Lang) => void;
-  login: (loginId: string, pin: string) => 'ok' | 'invalid' | 'inactive';
-  logout: () => void;
-  /** Creates a citizen account and logs it in. */
-  register: (details: CitizenDetails, pin: string) => 'ok' | 'exists';
-  updateProfile: (patch: Partial<Omit<CitizenDetails, 'mobile'>>) => void;
-  addComplaint: (c: { categoryId: string; description: string; location: string; photo?: string }) => string;
-  applyScheme: (schemeId: string) => string;
-  setStatus: (id: string, status: Status, note?: string, department?: string) => void;
-  confirmResolution: (id: string) => void;
-  addNotice: (n: { tag: NoticeTag; title: L; body: L }) => void;
-  createAdmin: (a: NewAdmin) => 'ok' | 'exists';
-  setAccountActive: (id: string, active: boolean) => void;
-  removeAccount: (id: string) => void;
-  resetDemo: () => void;
+  setSession: (session: Session | null) => void;
+  setUser: (user: User) => void;
 };
-
-const nextId = (seq: number) => `RP-${new Date().getFullYear()}-${String(seq).padStart(5, '0')}`;
-/** Login IDs are matched case-insensitively and without spaces (mobile numbers are typed with gaps). */
-export const normaliseLoginId = (v: string) => v.replace(/\s+/g, '').toLowerCase();
-
-const SEED = { accounts: SEED_ACCOUNTS, sessionId: null, requests: SEED_REQUESTS, notices: SEED_NOTICES, seq: FIRST_NEW_SEQ };
 
 export const useStore = create<State>()(
   persist(
-    (set, get) => {
-      const me = () => findUser(get());
-      const newRequest = (fields: Omit<Request, 'id' | 'status' | 'createdAt' | 'history' | 'citizen'>) => {
-        const { seq, requests } = get();
-        const user = me();
-        const now = Date.now();
-        const id = nextId(seq);
-        const req: Request = {
-          ...fields, id, status: 'submitted', createdAt: now,
-          history: [{ status: 'submitted', at: now }],
-          citizen: { name: user?.name ?? '', mobile: user?.mobile ?? '' },
-        };
-        set({ requests: [req, ...requests], seq: seq + 1 });
-        return id;
-      };
-
-      return {
-        hydrated: false,
-        lang: 'hi',
-        ...SEED,
-
-        setLang: (lang) => set({ lang }),
-
-        login: (loginId, pin) => {
-          const key = normaliseLoginId(loginId);
-          const acc = get().accounts.find((a) => normaliseLoginId(a.loginId) === key && a.pin === pin);
-          if (!acc) return 'invalid';
-          if (!acc.active) return 'inactive';
-          set({ sessionId: acc.id });
-          return 'ok';
-        },
-        logout: () => set({ sessionId: null }),
-
-        register: (details, pin) => {
-          const { accounts } = get();
-          if (accounts.some((a) => normaliseLoginId(a.loginId) === details.mobile || a.mobile === details.mobile)) return 'exists';
-          const acc: Account = {
-            ...details, id: `u-${Date.now()}`, role: 'citizen', loginId: details.mobile, pin, active: true, createdAt: Date.now(),
-          };
-          set({ accounts: [...accounts, acc], sessionId: acc.id });
-          return 'ok';
-        },
-
-        updateProfile: (patch) => {
-          const id = get().sessionId;
-          set({ accounts: get().accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
-        },
-
-        addComplaint: ({ categoryId, description, location, photo }) => {
-          const cat = CATEGORIES.find((c) => c.id === categoryId) ?? CATEGORIES[CATEGORIES.length - 1];
-          const title: L = { hi: `${cat.name.hi} की समस्या`, en: `${cat.name.en} Problem` };
-          return newRequest({ kind: 'complaint', title, categoryId: cat.id, description, location, photo, department: cat.dept });
-        },
-
-        applyScheme: (schemeId) => {
-          const found = findScheme(schemeId);
-          return newRequest({
-            kind: 'application', schemeId,
-            title: found?.scheme.name ?? { hi: 'योजना आवेदन', en: 'Scheme Application' },
-            description: `${found?.scheme.name.hi ?? 'योजना'} के लिए आवेदन।`,
-            location: 'रूपावास',
-            department: found?.scheme.dept ?? 'panchayat',
-          });
-        },
-
-        // Only staff can change a status, and only forward along the flow (see nextStatuses).
-        setStatus: (id, status, note, department) => {
-          const user = me();
-          if (!isStaff(user)) return;
-          set({
-            requests: get().requests.map((r) =>
-              r.id === id && nextStatuses(r.status).includes(status)
-                ? {
-                    ...r,
-                    status,
-                    department: department ?? r.department,
-                    confirmed: status === 'resolved' ? r.confirmed : false,
-                    history: [...r.history, { status, at: Date.now(), note: note?.trim() || undefined, by: user?.name, byId: user?.id }],
-                  }
-                : r,
-            ),
-          });
-        },
-
-        // Only the citizen who raised a resolved request can confirm it.
-        confirmResolution: (id) => {
-          const mobile = me()?.mobile;
-          set({
-            requests: get().requests.map((r) =>
-              r.id === id && r.status === 'resolved' && r.citizen.mobile === mobile ? { ...r, confirmed: true } : r,
-            ),
-          });
-        },
-
-        addNotice: ({ tag, title, body }) =>
-          set({
-            notices: [
-              {
-                id: `n${Date.now()}`, tag, ...TAG_VISUAL[tag],
-                title,
-                body,
-                source: { hi: 'ग्राम पंचायत रूपावास', en: 'Gram Panchayat Roopawas' },
-              },
-              ...get().notices,
-            ],
-          }),
-
-        createAdmin: ({ name, loginId, pin, mobile, designation }) => {
-          const { accounts } = get();
-          const key = normaliseLoginId(loginId);
-          if (accounts.some((a) => normaliseLoginId(a.loginId) === key)) return 'exists';
-          const acc: Account = {
-            id: `u-${Date.now()}`, role: 'admin', name, loginId: key, pin, mobile, designation, active: true, createdAt: Date.now(),
-          };
-          set({ accounts: [...accounts, acc] });
-          return 'ok';
-        },
-
-        // The logged-in account cannot deactivate or remove itself.
-        setAccountActive: (id, active) => {
-          if (id === get().sessionId) return;
-          set({ accounts: get().accounts.map((a) => (a.id === id ? { ...a, active } : a)) });
-        },
-        removeAccount: (id) => {
-          if (id === get().sessionId) return;
-          set({ accounts: get().accounts.filter((a) => a.id !== id) });
-        },
-
-        resetDemo: () => set(SEED),
-      };
-    },
+    (set) => ({
+      lang: 'hi',
+      token: null,
+      user: null,
+      setLang: (lang) => set({ lang }),
+      setSession: (session) => set({ token: session?.token ?? null, user: session?.user ?? null }),
+      setUser: (user) => set({ user }),
+    }),
     {
       name: 'roopawas-seva',
-      // v2 replaced the single on-device profile with role-based accounts; older saved data is dropped.
-      version: 2,
-      migrate: (persisted, version) => (version < 2 ? { lang: (persisted as { lang?: Lang })?.lang ?? 'hi' } : persisted) as State,
+      // v3 moved all data behind the API; earlier saved data (accounts, requests…) is dropped and the language kept.
+      version: 3,
+      migrate: (persisted, version) => (version < 3 ? { lang: (persisted as { lang?: Lang })?.lang ?? 'hi' } : persisted) as State,
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ lang, accounts, sessionId, requests, notices, seq }) => ({
-        lang, accounts, sessionId, notices, seq,
-        // Browser-picked photos are large data/blob URIs that would overflow web storage.
-        requests: requests.map((r) => (r.photo && !r.photo.startsWith('file:') ? { ...r, photo: undefined } : r)),
-      }),
     },
   ),
 );
 
-/** The logged-in account. A deactivated account counts as logged out straight away, not just at its next login. */
-const findUser = (s: Pick<State, 'accounts' | 'sessionId'>) => s.accounts.find((a) => a.id === s.sessionId && a.active) ?? null;
-
 /** The logged-in account, or null. */
-export const useUser = () => useStore(findUser);
+export const useUser = () => useStore((s) => s.user);
 
 /** Bilingual helper: `t('हिंदी', 'English')` for inline copy, `tl(obj)` for `{hi, en}` data. */
 export function useT() {

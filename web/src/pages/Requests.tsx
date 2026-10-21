@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Chips, Empty, Icon, PageHead, RequestRow, RequestSummary, Timeline, tint } from '../components/ui';
+import { useConfirmResolution, useRequest, useRequests } from '../api/hooks';
+import { Chips, Empty, Icon, Loaded, PageHead, RequestRow, RequestSummary, Timeline, tint, useErrorText } from '../components/ui';
 import { RequestFilter, matchesFilter, useFilterOptions } from '../filters';
-import { useStore, useT, useUser } from '../store';
+import { useT } from '../store';
 
 export function Requests() {
   const { t } = useT();
-  const requests = useStore((s) => s.requests);
-  const mobile = useUser()?.mobile;
+  // The server only returns the logged-in citizen's own requests.
+  const requests = useRequests();
   const [filter, setFilter] = useState<RequestFilter>('all');
   const options = useFilterOptions();
-  const list = useMemo(() => requests.filter((r) => r.citizen.mobile === mobile && matchesFilter(r, filter)), [requests, filter, mobile]);
 
   return (
     <div className="container page" style={{ maxWidth: 860 }}>
@@ -22,8 +22,14 @@ export function Requests() {
       />
       <div className="stack">
         <Chips value={filter} options={options} onChange={setFilter} />
-        {list.length === 0 ? <Empty icon="clipboard-text-off-outline" text={t('यहाँ कोई आवेदन नहीं है', 'No applications here')} /> : null}
-        {list.map((r) => <RequestRow key={r.id} r={r} to={`/requests/${r.id}`} />)}
+        <Loaded q={requests}>
+          {(all) => {
+            const list = all.filter((r) => matchesFilter(r, filter));
+            return list.length === 0
+              ? <Empty icon="clipboard-text-off-outline" text={t('यहाँ कोई आवेदन नहीं है', 'No applications here')} />
+              : list.map((r) => <RequestRow key={r.id} r={r} to={`/requests/${r.id}`} />);
+          }}
+        </Loaded>
       </div>
     </div>
   );
@@ -31,11 +37,11 @@ export function Requests() {
 
 export function RequestPage() {
   const { t } = useT();
-  const { id } = useParams();
-  const mobile = useUser()?.mobile;
-  // Someone else's request is treated as not found, so request numbers cannot be used to browse other citizens' details.
-  const r = useStore((s) => s.requests.find((x) => x.id === id && x.citizen.mobile === mobile));
-  const confirmResolution = useStore((s) => s.confirmResolution);
+  const { id = '' } = useParams();
+  // The server answers 404 for someone else's request, so request numbers cannot be used to browse other citizens' details.
+  const request = useRequest(id);
+  const confirm = useConfirmResolution();
+  const errorText = useErrorText();
 
   return (
     <div className="container page" style={{ maxWidth: 860 }}>
@@ -44,24 +50,29 @@ export function RequestPage() {
         title={t('आवेदन की स्थिति', 'Request Status')}
         right={<Link to="/requests" className="btn sm outline"><Icon name="chevron-left" size={18} />{t('सभी आवेदन', 'All applications')}</Link>}
       />
-      {!r ? <Empty icon="file-question-outline" text={t('यह आवेदन नहीं मिला', 'This request was not found')} /> : (
-        <div className="stack">
-          <RequestSummary r={r} />
-          <Timeline r={r} />
-          {r.status === 'resolved' && r.kind === 'complaint' ? (
-            r.confirmed ? (
-              <div className="card ok row" style={{ background: 'var(--green-soft)', borderColor: 'var(--green)' }}>
-                <Icon name="check-decagram" size={24} />{t('आपने समाधान की पुष्टि कर दी है। धन्यवाद!', 'You confirmed the resolution. Thank you!')}
-              </div>
-            ) : (
-              <div className="card row wrap">
-                <b className="grow">{t('क्या आपकी समस्या हल हो गई है?', 'Has your problem been resolved?')}</b>
-                <button className="btn" style={tint('var(--green)')} onClick={() => confirmResolution(r.id)}><Icon name="check" />{t('हाँ, समाधान की पुष्टि करें', 'Yes, confirm resolution')}</button>
-              </div>
-            )
-          ) : null}
-        </div>
-      )}
+      <Loaded q={request} notFound={t('यह आवेदन नहीं मिला', 'This request was not found')}>
+        {(r) => (
+          <div className="stack">
+            <RequestSummary r={r} />
+            <Timeline r={r} />
+            {r.status === 'resolved' && r.kind === 'complaint' ? (
+              r.confirmed ? (
+                <div className="card ok row" style={{ background: 'var(--green-soft)', borderColor: 'var(--green)' }}>
+                  <Icon name="check-decagram" size={24} />{t('आपने समाधान की पुष्टि कर दी है। धन्यवाद!', 'You confirmed the resolution. Thank you!')}
+                </div>
+              ) : (
+                <div className="card row wrap">
+                  <b className="grow">{t('क्या आपकी समस्या हल हो गई है?', 'Has your problem been resolved?')}</b>
+                  <button className="btn" style={tint('var(--green)')} disabled={confirm.isPending} onClick={() => confirm.mutate(r.id)}>
+                    <Icon name={confirm.isPending ? 'loading' : 'check'} spin={confirm.isPending} />{t('हाँ, समाधान की पुष्टि करें', 'Yes, confirm resolution')}
+                  </button>
+                  {confirm.isError ? <div className="error" style={{ flexBasis: '100%' }}>{errorText(confirm.error)}</div> : null}
+                </div>
+              )
+            ) : null}
+          </div>
+        )}
+      </Loaded>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useLogout, useResetDemo, useSessionCheck } from '../api/hooks';
 import { Role, isStaff } from '../data';
-import { useStore, useT, useUser } from '../store';
+import { useT, useUser } from '../store';
 import { Logo } from './Art';
 import { Icon, LangToggle, tint } from './ui';
 
@@ -21,9 +22,10 @@ export function Layout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const user = useUser();
-  const logout = useStore((s) => s.logout);
+  const logout = useLogout();
+  const resetDemo = useResetDemo();
   const [open, setOpen] = useState(false);
-  const resetDemo = useStore((s) => s.resetDemo);
+  useSessionCheck();
 
   // Keep the page's declared language in step with the language toggle.
   useEffect(() => {
@@ -63,7 +65,7 @@ export function Layout() {
                   <Icon name={user.role === 'citizen' ? 'account' : user.role === 'admin' ? 'account-tie' : 'shield-crown'} size={17} />
                   {user.name}
                 </Link>
-                <button className="btn sm outline" style={tint('var(--red)')} title={t('लॉग आउट', 'Log out')} onClick={() => { logout(); navigate('/'); }}>
+                <button className="btn sm outline" style={tint('var(--red)')} title={t('लॉग आउट', 'Log out')} disabled={logout.isPending} onClick={() => logout.mutate(undefined, { onSettled: () => navigate('/') })}>
                   <Icon name="logout" size={17} />{t('लॉग आउट', 'Log out')}
                 </button>
               </>
@@ -89,7 +91,8 @@ export function Layout() {
             className="btn sm outline"
             style={{ background: 'transparent', color: '#fff', borderColor: '#7f9bd0' }}
             title={t('नए खाते और शिकायतें हटाकर नमूना डेटा वापस लाएँ (लॉग आउट हो जाएँगे)', 'Remove new accounts and complaints and restore the sample data (logs you out)')}
-            onClick={() => { if (window.confirm(t('डेमो डेटा रीसेट करें?', 'Reset the demo data?'))) { resetDemo(); navigate('/'); } }}
+            disabled={resetDemo.isPending}
+            onClick={() => { if (window.confirm(t('डेमो डेटा रीसेट करें?', 'Reset the demo data?'))) resetDemo.mutate(undefined, { onSuccess: () => navigate('/') }); }}
           >
             <Icon name="refresh" size={16} />{t('डेमो रीसेट करें', 'Reset demo')}
           </button>

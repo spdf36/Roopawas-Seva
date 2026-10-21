@@ -1,12 +1,63 @@
+import { UseQueryResult } from '@tanstack/react-query';
 import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
+import { ApiError } from '../api';
 import {
   DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, Request, STATUS, Visual, fmtDate, requestVisual, statusLabel,
 } from '../data';
 import { useStore, useT } from '../store';
 
-export function Icon({ name, size = 20, color, style }: { name: IconName; size?: number; color?: string; style?: CSSProperties }) {
-  return <i className={`mdi mdi-${name}`} aria-hidden="true" style={{ fontSize: size, color, ...style }} />;
+export function Icon({ name, size = 20, color, style, spin }: { name: IconName; size?: number; color?: string; style?: CSSProperties; spin?: boolean }) {
+  return <i className={`mdi mdi-${name}${spin ? ' mdi-spin' : ''}`} aria-hidden="true" style={{ fontSize: size, color, ...style }} />;
+}
+
+/** A user-facing message for any error thrown by the API (or anything else). */
+export function useErrorText() {
+  const { t } = useT();
+  return (error: unknown): string => {
+    const code = error instanceof ApiError ? error.code : 'network';
+    switch (code) {
+      case 'invalid_login': return t('मोबाइल नंबर / यूज़र आईडी या पिन गलत है।', 'Incorrect mobile number / user ID or PIN.');
+      case 'inactive': return t('यह खाता निष्क्रिय है। पंचायत कार्यालय से संपर्क करें।', 'This account is deactivated. Please contact the Panchayat office.');
+      case 'unauthorized': return t('आपका सत्र समाप्त हो गया। कृपया फिर से लॉगिन करें।', 'Your session has ended. Please log in again.');
+      case 'forbidden': return t('आपको यह करने की अनुमति नहीं है।', 'You are not allowed to do this.');
+      case 'not_found': return t('यह जानकारी नहीं मिली।', 'This could not be found.');
+      case 'exists': return t('यह पहले से मौजूद है।', 'This already exists.');
+      case 'invalid': return t('जानकारी सही नहीं है। कृपया जाँचकर फिर से भेजें।', 'Some details are not valid. Please check and try again.');
+      default: return t('सर्वर से संपर्क नहीं हो सका। कृपया फिर से प्रयास करें।', 'Could not reach the server. Please try again.');
+    }
+  };
+}
+
+export function Loading() {
+  const { t } = useT();
+  return (
+    <div className="center sub" style={{ padding: 40 }} role="status">
+      <Icon name="loading" size={34} spin color="var(--navy)" />
+      <p>{t('लोड हो रहा है…', 'Loading…')}</p>
+    </div>
+  );
+}
+
+/** Shows why something failed to load, with a retry button. `notFound` replaces the text for a 404. */
+export function ErrorBox({ error, retry, notFound }: { error: unknown; retry?: () => void; notFound?: string }) {
+  const { t } = useT();
+  const errorText = useErrorText();
+  const missing = error instanceof ApiError && error.code === 'not_found';
+  return (
+    <div className="card center sub stack" style={{ padding: 32, alignItems: 'center' }} role="alert">
+      <Icon name={missing ? 'file-question-outline' : 'alert-circle-outline'} size={44} color={missing ? 'var(--faint)' : 'var(--red)'} />
+      <p>{missing && notFound ? notFound : errorText(error)}</p>
+      {retry && !missing ? <button type="button" className="btn sm outline" onClick={retry}><Icon name="refresh" size={17} />{t('फिर से प्रयास करें', 'Try again')}</button> : null}
+    </div>
+  );
+}
+
+/** Renders a query's data once it has loaded, and its loading or error state until then. */
+export function Loaded<T>({ q, notFound, children }: { q: UseQueryResult<T>; notFound?: string; children: (data: T) => ReactNode }) {
+  if (q.isPending) return <Loading />;
+  if (q.isError) return <ErrorBox error={q.error} retry={() => q.refetch()} notFound={notFound} />;
+  return <>{children(q.data)}</>;
 }
 
 export function Bubble({ v, size = 46 }: { v: Visual; size?: number }) {

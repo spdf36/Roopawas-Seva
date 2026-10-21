@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ApiError } from '../api';
+import { useRegister, useSendOtp } from '../api/hooks';
 import { CitizenFields, CitizenForm, EMPTY_CITIZEN, useValidateCitizen } from '../components/CitizenFields';
-import { Field, Icon, PageHead, tint } from '../components/ui';
-import { useStore, useT } from '../store';
+import { Field, Icon, PageHead, tint, useErrorText } from '../components/ui';
+import { useT } from '../store';
 
 /** New citizen sign-up: details, then OTP, then choosing the login PIN. */
 export function Register() {
   const { t } = useT();
-  const register = useStore((s) => s.register);
-  const accounts = useStore((s) => s.accounts);
+  const sendOtp = useSendOtp();
+  const register = useRegister();
   const validate = useValidateCitizen();
+  const errorText = useErrorText();
 
   const [form, setForm] = useState<CitizenForm>(EMPTY_CITIZEN);
   const [step, setStep] = useState<'form' | 'otp' | 'pin'>('form');
@@ -20,14 +23,16 @@ export function Register() {
 
   const taken = t('यह मोबाइल नंबर पहले से पंजीकृत है। कृपया लॉगिन करें।', 'This mobile number is already registered. Please log in.');
   const digits = (v: string) => v.replace(/\D/g, '').slice(0, 4);
+  const failure = (e: unknown) => setError(e instanceof ApiError && e.code === 'exists' ? taken : errorText(e));
 
-  const sendOtp = () => {
+  const requestOtp = () => {
     const problem = validate(form, true);
     if (problem) return setError(problem);
-    if (accounts.some((a) => a.mobile === form.mobile || a.loginId === form.mobile)) return setError(taken);
     setError('');
-    setOtp('');
-    setStep('otp');
+    sendOtp.mutate(form.mobile, {
+      onSuccess: () => { setOtp(''); setStep('otp'); },
+      onError: failure,
+    });
   };
 
   const verifyOtp = () => {
@@ -39,11 +44,14 @@ export function Register() {
   const finish = () => {
     if (!/^\d{4}$/.test(pin)) return setError(t('कृपया 4 अंकों का पिन चुनें।', 'Please choose a 4-digit PIN.'));
     if (pin !== pin2) return setError(t('दोनों पिन एक जैसे नहीं हैं।', 'The two PINs do not match.'));
-    if (register({ ...form, name: form.name.trim(), family: form.family.trim() }, pin) === 'exists') {
-      setStep('form');
-      return setError(taken);
-    }
+    setError('');
     // Success logs the citizen in; the GuestOnly route wrapper then redirects to Home.
+    register.mutate({ details: { ...form, name: form.name.trim(), family: form.family.trim() }, otp, pin }, {
+      onError: (e) => {
+        if (e instanceof ApiError && e.code === 'exists') setStep('form');
+        failure(e);
+      },
+    });
   };
 
   const pinStyle = { textAlign: 'center' as const, fontSize: 22, letterSpacing: 8 };
@@ -73,7 +81,9 @@ export function Register() {
           <Field label={t('पिन', 'PIN')} required type="password" inputMode="numeric" maxLength={4} value={pin} placeholder="••••" autoFocus autoComplete="new-password" onChange={(e) => { setPin(digits(e.target.value)); setError(''); }} style={pinStyle} />
           <Field label={t('पिन दोबारा डालें', 'Confirm PIN')} required type="password" inputMode="numeric" maxLength={4} value={pin2} placeholder="••••" autoComplete="new-password" onChange={(e) => { setPin2(digits(e.target.value)); setError(''); }} style={pinStyle} />
           {error ? <div className="error center">{error}</div> : null}
-          <button type="submit" className="btn block" style={tint('var(--green)')}><Icon name="check" />{t('पंजीकरण पूरा करें', 'Complete registration')}</button>
+          <button type="submit" className="btn block" style={tint('var(--green)')} disabled={register.isPending}>
+            <Icon name={register.isPending ? 'loading' : 'check'} spin={register.isPending} />{t('पंजीकरण पूरा करें', 'Complete registration')}
+          </button>
         </form>
       </div>
     );
@@ -82,10 +92,12 @@ export function Register() {
   return (
     <div className="container narrow page">
       <PageHead icon="account-plus-outline" title={t('अपना पंजीकरण करें', 'Register Yourself')} subtitle={t('(एक बार की प्रक्रिया)', '(One-time process)')} />
-      <form className="card stack" onSubmit={(e) => { e.preventDefault(); sendOtp(); }}>
+      <form className="card stack" onSubmit={(e) => { e.preventDefault(); requestOtp(); }}>
         <CitizenFields form={form} onChange={(patch) => { setForm({ ...form, ...patch }); setError(''); }} mobileEditable />
         {error ? <div className="error">{error}</div> : null}
-        <button type="submit" className="btn block">{t('OTP भेजें', 'Send OTP')}</button>
+        <button type="submit" className="btn block" disabled={sendOtp.isPending}>
+          {sendOtp.isPending ? <Icon name="loading" spin /> : null}{t('OTP भेजें', 'Send OTP')}
+        </button>
         <p className="center small sub">
           {t('पहले से पंजीकृत हैं?', 'Already registered?')} <Link to="/login" style={{ color: 'var(--navy)', fontWeight: 700 }}>{t('लॉगिन करें', 'Log in')}</Link>
         </p>
