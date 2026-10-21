@@ -89,6 +89,8 @@ img { max-width: 100%; }
 /* ---------- Cards / grids ---------- */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
 a.card, .card.link { display: block; transition: box-shadow 0.15s, transform 0.15s; }
+/* A card link laid out as a row (beats the display: block above). */
+a.card.row { display: flex; }
 a.card:hover, .card.link:hover { box-shadow: 0 6px 18px rgba(11, 60, 140, 0.1); transform: translateY(-1px); }
 .grid { display: grid; gap: 16px; }
 .g2 { grid-template-columns: repeat(2, 1fr); }
@@ -197,13 +199,23 @@ tr.click:hover td { background: #f7faff; }
 .status-pick:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1020px) {
+/* The header needs about 1280px in English with a user logged in, so it gets a wider container than the
+   page, tighter links on mid-size screens, and the menu button below 1200px. */
+.nav .container { max-width: 1320px; }
+@media (max-width: 1340px) {
+  .nav-in { gap: 12px; }
+  .nav-links a { padding: 7px 8px; font-size: 14px; }
+}
+@media (max-width: 1199px) {
   .nav-toggle { display: block; margin-left: auto; }
   .nav-links, .nav-actions { display: none; }
   .nav.open .nav-links, .nav.open .nav-actions { display: flex; }
   .nav.open .nav-in { height: auto; flex-wrap: wrap; padding-top: 10px; padding-bottom: 14px; }
   .nav.open .nav-links { order: 3; flex-basis: 100%; flex-direction: column; align-items: stretch; }
   .nav.open .nav-actions { order: 4; flex-basis: 100%; flex-wrap: wrap; }
+  .nav.open .nav-links a { padding: 7px 11px; font-size: 15px; }
+}
+@media (max-width: 1020px) {
   .hero-in, .split, .admin { grid-template-columns: 1fr; }
   .admin-side { position: static; }
   .g6 { grid-template-columns: repeat(3, 1fr); }
@@ -219,3 +231,11 @@ tr.click:hover td { background: #f7faff; }
   .flow { grid-template-columns: repeat(2, 1fr); }
   .page-head h1 { font-size: 23px; }
 }
+
+/* ---------- Help page FAQ ---------- */
+.faq { display: flex; flex-direction: column; gap: 10px; }
+.faq summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::before { content: '+'; font-weight: 800; color: var(--navy); width: 16px; }
+.faq details[open] summary::before { content: '−'; }
+.faq details p { margin-top: 8px; padding-left: 24px; }

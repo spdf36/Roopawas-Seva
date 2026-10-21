@@ -3,7 +3,7 @@ import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, Te
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api';
 import {
-  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, requestVisual, statusLabel,
+  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, mapLink, requestVisual, statusLabel,
 } from '../data';
 import { useStore, useT } from '../store';
 
@@ -25,6 +25,7 @@ export function useErrorText() {
       case 'exists': return t('यह पहले से मौजूद है।', 'This already exists.');
       case 'in_use': return t('इसे हटाया नहीं जा सकता क्योंकि इससे जुड़े आवेदन मौजूद हैं।', 'This cannot be deleted because applications refer to it.');
       case 'invalid': return t('जानकारी सही नहीं है। कृपया जाँचकर फिर से भेजें।', 'Some details are not valid. Please check and try again.');
+      case 'too_large': return t('फोटो बहुत बड़ी है या जगह भर गई है। कृपया छोटी फोटो चुनें या फोटो हटाकर भेजें।', 'The photo is too large, or storage is full. Choose a smaller photo or send without one.');
       default: return t('सर्वर से संपर्क नहीं हो सका। कृपया फिर से प्रयास करें।', 'Could not reach the server. Please try again.');
     }
   };
@@ -191,6 +192,7 @@ export function RequestRow({ r, to, showCitizen }: { r: Request; to: string; sho
         <b style={{ fontSize: 17 }}>{tl(r.title)}</b>
         <div className="tiny sub">{r.id}  •  {fmtDate(r.createdAt)}{showCitizen && r.citizen.name ? `  •  ${r.citizen.name}` : ''}</div>
       </div>
+      <ReopenedBadge r={r} />
       <StatusBadge r={r} />
       <Icon name="chevron-right" color="var(--faint)" />
     </Link>
@@ -210,12 +212,20 @@ export function NeedLogin({ next }: { next: string }) {
   );
 }
 
+/** Marks a complaint the citizen reopened because it was not actually fixed. */
+export function ReopenedBadge({ r }: { r: Request }) {
+  const { t } = useT();
+  if (!r.reopened) return null;
+  const label = r.reopened > 1 ? t(`${r.reopened} बार दोबारा खोला`, `Reopened ${r.reopened}×`) : t('दोबारा खोला गया', 'Reopened');
+  return <Badge label={label} color="var(--red)" soft="#fde5e8" />;
+}
+
 function Meta({ icon, text }: { icon: IconName; text: string }) {
   return <div className="row small sub" style={{ gap: 8 }}><Icon name={icon} size={17} />{text}</div>;
 }
 
 export function RequestSummary({ r, showCitizen }: { r: Request; showCitizen?: boolean }) {
-  const { tl } = useT();
+  const { t, tl } = useT();
   return (
     <div className="card stack" style={{ gap: 10 }}>
       <div className="row">
@@ -224,12 +234,24 @@ export function RequestSummary({ r, showCitizen }: { r: Request; showCitizen?: b
           <h3>{tl(r.title)}</h3>
           <div className="tiny sub">{r.id}  •  {fmtDate(r.createdAt)}</div>
         </div>
-        <StatusBadge r={r} />
+        <div className="stack" style={{ gap: 4, alignItems: 'flex-end' }}>
+          <StatusBadge r={r} />
+          <ReopenedBadge r={r} />
+        </div>
       </div>
       <p>{r.description}</p>
-      {r.photo ? <img src={r.photo} alt="" style={{ maxHeight: 240, borderRadius: 8, objectFit: 'cover' }} /> : null}
+      {r.photo ? (
+        <a href={r.photo} target="_blank" rel="noreferrer" title={t('पूरी फोटो देखें', 'View full photo')}>
+          <img src={r.photo} alt={t('समस्या की फोटो', 'Photo of the problem')} style={{ maxHeight: 240, borderRadius: 8, objectFit: 'cover' }} />
+        </a>
+      ) : null}
       <div>
         <Meta icon="map-marker-outline" text={r.location} />
+        {r.coords ? (
+          <a className="row small" style={{ gap: 8, color: 'var(--blue)', fontWeight: 600 }} href={mapLink(r.coords)} target="_blank" rel="noreferrer">
+            <Icon name="crosshairs-gps" size={17} />{t('नक्शे पर देखें', 'View on map')} ({r.coords.lat.toFixed(5)}, {r.coords.lng.toFixed(5)}{r.coords.accuracy ? ` ±${r.coords.accuracy} m` : ''})
+          </a>
+        ) : null}
         <Meta icon="office-building-outline" text={tl(DEPARTMENTS[r.department] ?? DEPARTMENTS.panchayat)} />
         {showCitizen && r.citizen.name ? <Meta icon="account-outline" text={`${r.citizen.name}  •  +91 ${r.citizen.mobile}`} /> : null}
       </div>

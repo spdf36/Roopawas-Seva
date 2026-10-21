@@ -1,9 +1,9 @@
 import {
   Account, BASELINE_FIELDS, Baseline, CATEGORIES, DEPARTMENTS, DevelopmentWork, FIRST_NEW_SEQ, L, NOTICE_TAGS, Notice, Request, Role,
   SCHEME_GROUPS, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS, Scheme, TAG_VISUAL, isStaff,
-  matchesFilter, nextStatuses, updatedAt,
+  Coords, REOPEN_STATUS, canReopen, matchesFilter, nextStatuses, updatedAt,
 } from '../data';
-import { Api, ApiError, NewNotice, SchemeInput, User, WorkInput } from './types';
+import { Api, ApiError, MAX_PHOTO_BYTES, NewNotice, SchemeInput, User, WorkInput } from './types';
 
 /**
  * A stand-in for the backend that runs in the browser and keeps its "database" in localStorage.
@@ -40,6 +40,8 @@ function load(): Db {
       const db: Db = { ...seed(), ...(JSON.parse(raw) as Partial<Db>) };
       // Requests saved before wards were recorded on them take the citizen's current ward.
       for (const r of db.requests) r.citizen.ward ??= db.accounts.find((a) => a.mobile === r.citizen.mobile)?.ward;
+      // Notices saved before they were dated take their sample date, or the day the change shipped.
+      for (const n of db.notices) n.publishedAt ??= SEED_NOTICES.find((s) => s.id === n.id)?.publishedAt ?? Date.now();
       return db;
     }
   } catch {
@@ -49,12 +51,11 @@ function load(): Db {
 }
 
 function save(db: Db) {
-  // Only data: URLs survive a reload; object URLs from a file picker die with the page.
-  const requests = db.requests.map((r) => (r.photo && !r.photo.startsWith('data:') ? { ...r, photo: undefined } : r));
   try {
-    localStorage.setItem(DB_KEY, JSON.stringify({ ...db, requests }));
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
   } catch {
-    // Storage full or blocked: the change lives until the page reloads.
+    // Browser storage is full (photos fill it fastest): reject the change instead of losing it on the next reload.
+    fail(413, 'too_large');
   }
 }
 
@@ -72,6 +73,20 @@ const bilingual = (v: L): L => ({ hi: v.hi.trim(), en: v.en.trim() || v.hi.trim(
 const isOpen = (r: Request) => r.status !== 'resolved' && r.status !== 'rejected';
 const newToken = () => crypto.randomUUID();
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+
+function cleanCoords(c: Coords | undefined): Coords | undefined {
+  if (!c) return undefined;
+  const { lat, lng, accuracy } = c;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(400, 'invalid');
+  return { lat, lng, accuracy: Number.isFinite(accuracy) ? Math.round(accuracy!) : undefined };
+}
+
+function cleanPhoto(photo: string | undefined): string | undefined {
+  if (!photo) return undefined;
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(photo)) return fail(400, 'invalid');
+  if (photo.length > MAX_PHOTO_BYTES) return fail(413, 'too_large');
+  return photo;
+}
 
 function cleanNotice({ tag, title, body }: NewNotice): Pick<Notice, 'tag' | 'title' | 'body'> {
   if (!NOTICE_TAGS.some((x) => x.id === tag) || !filled(title) || !filled(body)) return fail(400, 'invalid');
@@ -234,13 +249,14 @@ export function createMockApi(getToken: () => string | null): Api {
 
     getRequest: (id) => call((db) => findRequest(db, id, auth(db))),
 
-    createComplaint: ({ categoryId, description, location, photo }) =>
+    createComplaint: ({ categoryId, description, location, coords, photo }) =>
       call((db) => {
         const user = auth(db, ['citizen']);
         const cat = CATEGORIES.find((c) => c.id === categoryId);
         if (!cat || description.trim().length < 5 || !location.trim()) return fail(400, 'invalid');
         return addRequest(db, user, {
-          kind: 'complaint', categoryId: cat.id, department: cat.dept, description: description.trim(), location: location.trim(), photo,
+          kind: 'complaint', categoryId: cat.id, department: cat.dept, description: description.trim(), location: location.trim(),
+          coords: cleanCoords(coords), photo: cleanPhoto(photo),
           title: { hi: `${cat.name.hi} की समस्या`, en: `${cat.name.en} Problem` },
         });
       }),
@@ -279,14 +295,25 @@ export function createMockApi(getToken: () => string | null): Api {
         return r;
       }),
 
-    listNotices: () => call((db) => db.notices),
+    reopenRequest: (id, reason) =>
+      call((db) => {
+        const user = auth(db, ['citizen']);
+        const r = findRequest(db, id, user);
+        if (!canReopen(r) || reason.trim().length < 5) return fail(400, 'invalid');
+        r.status = REOPEN_STATUS;
+        r.reopened = (r.reopened ?? 0) + 1;
+        r.history.push({ status: REOPEN_STATUS, at: Date.now(), note: reason.trim(), by: user.name, byId: user.id });
+        return r;
+      }),
+
+    listNotices: () => call((db) => [...db.notices].sort((a, b) => b.publishedAt - a.publishedAt)),
 
     createNotice: (n) =>
       call((db) => {
         auth(db, ['admin', 'superadmin']);
         const fields = cleanNotice(n);
         const notice: Notice = {
-          id: newId('n'), ...fields, ...TAG_VISUAL[fields.tag],
+          id: newId('n'), ...fields, ...TAG_VISUAL[fields.tag], publishedAt: Date.now(),
           source: { hi: 'ग्राम पंचायत रूपावास', en: 'Gram Panchayat Roopawas' },
         };
         db.notices.unshift(notice);
@@ -299,7 +326,7 @@ export function createMockApi(getToken: () => string | null): Api {
         const notice = find(db.notices, id);
         const fields = cleanNotice(n);
         // A notice keeps its own icon unless its category changes.
-        Object.assign(notice, fields, fields.tag !== notice.tag ? TAG_VISUAL[fields.tag] : {});
+        Object.assign(notice, fields, fields.tag !== notice.tag ? TAG_VISUAL[fields.tag] : {}, { updatedAt: Date.now() });
         return notice;
       }),
 

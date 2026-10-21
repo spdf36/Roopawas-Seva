@@ -50,12 +50,14 @@ were added, so it shows the earlier separate admin login)
 - Registration: details → mobile OTP (simulated) → choose a login PIN
 - Government schemes grouped by students, farmers, women, senior citizens and job seekers, with
   the citizen's own group shown first; apply in one tap
-- Raise a complaint (category, description, photo, location) and get a request number such as
-  `RP-2026-00128`
+- Raise a complaint (category, description, photo, address and optional GPS location) and get a request
+  number such as `RP-2026-00128`. Photos are compressed on the device (a phone photo becomes ~100–350 KB)
 - Track every request through the six-step flow:
-  Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution
-- Latest notices from the government and the Panchayat
+  Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution,
+  or reopen it with a reason within 30 days if the problem is not actually fixed
+- Latest notices from the government and the Panchayat, with their dates
 - Public village dashboard (roads, water, street lights, schemes, total requests, development works)
+- Help page: how to use the service and frequently asked questions
 
 **Sarpanch / admin**
 - All applications: search by request number, name or mobile; filter by status, category,

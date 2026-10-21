@@ -4,7 +4,9 @@ import { ApiError, NewAdmin, RequestQuery, RequestSort } from '../api';
 import {
   useAccounts, useCreateAdmin, useLogout, useRemoveAccount, useRequest, useRequests, useSetAccountActive, useUpdateStatus, useVillageStats,
 } from '../api/hooks';
-import { Badge, Chips, Empty, Field, Icon, Loaded, PageHead, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint, useErrorText } from '../components/ui';
+import {
+  Badge, Chips, Empty, Field, Icon, Loaded, PageHead, ReopenedBadge, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint, useErrorText,
+} from '../components/ui';
 import {
   CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, OVERDUE_DAYS, ROLE_NAME, Request, RequestFilter, SEED_ACCOUNTS,
   STATUS, Status, WARDS, daysOpen, fmtDate, isClosed, nextStatuses,
@@ -226,7 +228,7 @@ export function AdminRequests() {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} className="click" onClick={() => navigate(`/admin/requests/${r.id}`)}>
-                      <td><b>{tl(r.title)}</b><div className="tiny sub">{r.id}</div></td>
+                      <td><b>{tl(r.title)}</b> <ReopenedBadge r={r} /><div className="tiny sub">{r.id}</div></td>
                       <td>
                         {r.citizen.name}
                         <div className="tiny sub">+91 {r.citizen.mobile}{r.citizen.ward ? `  •  ${tl(WARDS.find((w) => w.id === r.citizen.ward)?.name ?? { hi: '', en: '' })}` : ''}</div>

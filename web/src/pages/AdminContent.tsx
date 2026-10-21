@@ -5,7 +5,7 @@ import {
   useUpdateBaseline, useWorks,
 } from '../api/hooks';
 import { Badge, BiField, Bubble, Field, Icon, Loaded, PageHead, Select, tint, useErrorText } from '../components/ui';
-import { BASELINE_FIELDS, Baseline, DEPARTMENTS, NOTICE_TAGS, NoticeTag, SCHEME_GROUPS, Scheme } from '../data';
+import { BASELINE_FIELDS, Baseline, DEPARTMENTS, NOTICE_TAGS, NoticeTag, SCHEME_GROUPS, Scheme, fmtDate } from '../data';
 import { useT } from '../store';
 
 // Staff pages for the content citizens see: notices, schemes, development works and the
@@ -95,6 +95,7 @@ export function AdminNotices() {
                   <div className="card" key={n.id} style={{ padding: 12, outline: n.id === editId ? '2px solid var(--purple)' : undefined }}>
                     <div className="row"><b className="grow">{tl(n.title)}</b><Badge label={tl(NOTICE_TAGS.find((x) => x.id === n.tag)!.name)} color={n.color} soft={n.soft} /></div>
                     <div className="small sub">{tl(n.body)}</div>
+                    <div className="tiny" style={{ color: 'var(--faint)' }}>{t('जारी', 'Published')} {fmtDate(n.publishedAt)}{n.updatedAt ? `  •  ${t('अपडेट', 'updated')} ${fmtDate(n.updatedAt)}` : ''}</div>
                     <ItemActions
                       busy={remove.isPending} error={remove.isError && remove.variables === n.id ? errorText(remove.error) : undefined}
                       onEdit={() => { setEditId(n.id); setForm({ tag: n.tag, title: n.title, body: n.body }); setDone(''); save.reset(); window.scrollTo(0, 0); }}

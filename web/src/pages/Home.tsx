@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useNotices, useVillageStats } from '../api/hooks';
 import { Banner } from '../components/Art';
 import { Icon, Loaded, tint } from '../components/ui';
-import { FLOW, Icon as IconName, L, STATUS, isStaff, l } from '../data';
+import { FLOW, Icon as IconName, L, STATUS, fmtDate, isStaff, l } from '../data';
 import { useT, useUser } from '../store';
 import { C } from '../theme';
 
@@ -167,6 +167,7 @@ export function Home() {
                   <div className="grow">
                     <b>{tl(n.title)}</b>
                     <div className="small sub">{tl(n.body)}</div>
+                    <div className="tiny" style={{ color: 'var(--faint)' }}>{fmtDate(n.publishedAt)}</div>
                   </div>
                 </div>
               ))}

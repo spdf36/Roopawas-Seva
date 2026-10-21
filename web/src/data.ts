@@ -129,6 +129,9 @@ export type Request = {
   groupId?: string; // applications: the scheme's group at the time, for the icon (the scheme may later be removed)
   description: string;
   location: string;
+  /** GPS position from the citizen's device, when they shared it. */
+  coords?: Coords;
+  /** A compressed JPEG as a data: URL (the backend may store it elsewhere and return a URL instead). */
   photo?: string;
   status: Status;
   department: string;
@@ -136,7 +139,14 @@ export type Request = {
   history: HistoryEntry[];
   citizen: { name: string; mobile: string; ward?: string }; // ward as registered when the request was raised
   confirmed?: boolean;
+  /** How many times the citizen reopened it because the problem was not actually fixed. */
+  reopened?: number;
 };
+
+/** Latitude/longitude in degrees, with the device's accuracy in metres. */
+export type Coords = { lat: number; lng: number; accuracy?: number };
+
+export const mapLink = ({ lat, lng }: Coords) => `https://www.google.com/maps?q=${lat},${lng}`;
 
 export const requestVisual = (r: Request): Visual => {
   if (r.kind === 'application') {
@@ -167,6 +177,15 @@ export const daysOpen = (r: Request, now = Date.now()) => Math.floor(((isClosed(
 
 /** Open requests older than this many days are flagged as overdue. */
 export const OVERDUE_DAYS = 15;
+
+/** A citizen can reopen a resolved complaint within this many days, unless they already confirmed it. */
+export const REOPEN_DAYS = 30;
+
+export const canReopen = (r: Request, now = Date.now()) =>
+  r.kind === 'complaint' && r.status === 'resolved' && !r.confirmed && now - updatedAt(r) <= REOPEN_DAYS * DAY;
+
+/** Where a reopened complaint goes back to: the Panchayat reviews it again. */
+export const REOPEN_STATUS: Status = 'under_review';
 
 const DAY = 86400000;
 const d = (y: number, m: number, day: number) => new Date(y, m - 1, day, 10, 30).getTime();
@@ -202,7 +221,8 @@ export const FIRST_NEW_SEQ = 128;
 
 // ---------- Notices ----------
 export type NoticeTag = 'govt' | 'panchayat' | 'health';
-export type Notice = Visual & { id: string; tag: NoticeTag; title: L; body: L; source: L };
+/** `updatedAt` is set when a published notice is edited. */
+export type Notice = Visual & { id: string; tag: NoticeTag; title: L; body: L; source: L; publishedAt: number; updatedAt?: number };
 
 export const NOTICE_TAGS: { id: NoticeTag; name: L }[] = [
   { id: 'govt', name: l('सरकारी', 'Government') },
@@ -217,11 +237,11 @@ export const TAG_VISUAL: Record<NoticeTag, Visual> = {
 };
 
 export const SEED_NOTICES: Notice[] = [
-  { id: 'n1', tag: 'govt', icon: 'human-handsup', color: C.blue, soft: C.blueSoft, title: l('मुख्यमंत्री युवा संबल योजना', 'Mukhyamantri Yuva Sambal Yojana'), body: l('आवेदन की अंतिम तिथि – 30 सितंबर 2026', 'Last date to apply – 30 September 2026'), source: l('राजस्थान सरकार', 'Government of Rajasthan') },
-  { id: 'n2', tag: 'govt', icon: 'sprout', color: C.green, soft: C.greenSoft, title: l('कृषि विभाग की नई योजना', 'New Scheme from Agriculture Dept'), body: l('किसानों के लिए अनुदान की जानकारी', 'Subsidy information for farmers'), source: l('कृषि विभाग', 'Agriculture Dept') },
-  { id: 'n3', tag: 'health', icon: 'medical-bag', color: C.red, soft: C.redSoft, title: l('मुफ्त स्वास्थ्य शिविर', 'Free Health Camp'), body: l('15 सितंबर 2026 – प्राथमिक स्वास्थ्य केंद्र', '15 September 2026 – Primary Health Centre'), source: l('स्वास्थ्य विभाग', 'Health Dept') },
-  { id: 'n4', tag: 'panchayat', icon: 'calendar-month', color: C.orange, soft: C.orangeSoft, title: l('ग्राम सभा बैठक', 'Gram Sabha Meeting'), body: l('20 सितंबर 2026, समय: 11 बजे', '20 September 2026, 11 AM'), source: l('ग्राम पंचायत रूपावास', 'Gram Panchayat Roopawas') },
-  { id: 'n5', tag: 'panchayat', icon: 'water-alert', color: C.blue, soft: C.blueSoft, title: l('जल आपूर्ति में अस्थायी बाधा', 'Temporary Water Supply Disruption'), body: l('18 सितंबर 2026, सुबह 8–10 बजे', '18 September 2026, 8–10 AM'), source: l('पंचायत सूचना', 'Panchayat Notice') },
+  { id: 'n1', publishedAt: d(2026, 9, 1), tag: 'govt', icon: 'human-handsup', color: C.blue, soft: C.blueSoft, title: l('मुख्यमंत्री युवा संबल योजना', 'Mukhyamantri Yuva Sambal Yojana'), body: l('आवेदन की अंतिम तिथि – 30 सितंबर 2026', 'Last date to apply – 30 September 2026'), source: l('राजस्थान सरकार', 'Government of Rajasthan') },
+  { id: 'n2', publishedAt: d(2026, 9, 3), tag: 'govt', icon: 'sprout', color: C.green, soft: C.greenSoft, title: l('कृषि विभाग की नई योजना', 'New Scheme from Agriculture Dept'), body: l('किसानों के लिए अनुदान की जानकारी', 'Subsidy information for farmers'), source: l('कृषि विभाग', 'Agriculture Dept') },
+  { id: 'n3', publishedAt: d(2026, 9, 6), tag: 'health', icon: 'medical-bag', color: C.red, soft: C.redSoft, title: l('मुफ्त स्वास्थ्य शिविर', 'Free Health Camp'), body: l('15 सितंबर 2026 – प्राथमिक स्वास्थ्य केंद्र', '15 September 2026 – Primary Health Centre'), source: l('स्वास्थ्य विभाग', 'Health Dept') },
+  { id: 'n4', publishedAt: d(2026, 9, 10), tag: 'panchayat', icon: 'calendar-month', color: C.orange, soft: C.orangeSoft, title: l('ग्राम सभा बैठक', 'Gram Sabha Meeting'), body: l('20 सितंबर 2026, समय: 11 बजे', '20 September 2026, 11 AM'), source: l('ग्राम पंचायत रूपावास', 'Gram Panchayat Roopawas') },
+  { id: 'n5', publishedAt: d(2026, 9, 15), tag: 'panchayat', icon: 'water-alert', color: C.blue, soft: C.blueSoft, title: l('जल आपूर्ति में अस्थायी बाधा', 'Temporary Water Supply Disruption'), body: l('18 सितंबर 2026, सुबह 8–10 बजे', '18 September 2026, 8–10 AM'), source: l('पंचायत सूचना', 'Panchayat Notice') },
 ];
 
 // ---------- Village dashboard ----------

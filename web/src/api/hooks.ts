@@ -122,6 +122,14 @@ export const useUpdateStatus = () => useMutation({
   },
 });
 
+export const useReopenRequest = () => useMutation({
+  mutationFn: ({ id, reason }: { id: string; reason: string }) => api.reopenRequest(id, reason),
+  onSuccess: (r) => {
+    queryClient.setQueryData(keys.request(r.id), r);
+    return invalidate(keys.requests, keys.stats);
+  },
+});
+
 export const useConfirmResolution = () => useMutation({
   mutationFn: (id: string) => api.confirmResolution(id),
   onSuccess: (r) => {

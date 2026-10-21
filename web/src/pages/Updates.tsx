@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNotices } from '../api/hooks';
 import { Chips, Empty, Icon, Loaded, PageHead } from '../components/ui';
-import { NOTICE_TAGS, NoticeTag } from '../data';
+import { NOTICE_TAGS, NoticeTag, fmtDate } from '../data';
 import { useT } from '../store';
 
 export function Updates() {
@@ -23,7 +23,7 @@ export function Updates() {
                 <div className="grow">
                   <b style={{ fontSize: 17 }}>{tl(n.title)}</b>
                   <div className="sub">{tl(n.body)}</div>
-                  <div className="tiny" style={{ color: 'var(--faint)' }}>({tl(n.source)})</div>
+                  <div className="tiny" style={{ color: 'var(--faint)' }}>({tl(n.source)})  •  {fmtDate(n.publishedAt)}{n.updatedAt ? `  •  ${t('अपडेट', 'updated')} ${fmtDate(n.updatedAt)}` : ''}</div>
                 </div>
               </div>
             ));

@@ -1,4 +1,4 @@
-import { Account, Baseline, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from '../data';
+import { Account, Baseline, Coords, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from '../data';
 
 /** An account as the API returns it: the PIN never leaves the server. */
 export type User = Omit<Account, 'pin'>;
@@ -7,7 +7,8 @@ export type Session = { token: string; user: User };
 export type CitizenDetails = Pick<User, 'name' | 'mobile'> & Required<Pick<User, 'ageGroup' | 'ward' | 'occupation' | 'family'>>;
 export type ProfilePatch = Partial<Omit<CitizenDetails, 'mobile'>>;
 export type NewAdmin = Pick<Account, 'name' | 'loginId' | 'pin' | 'mobile'> & { designation: string };
-export type NewComplaint = { categoryId: string; description: string; location: string; photo?: string };
+/** `photo` is a JPEG data: URL, compressed on the device (see src/photo.ts). */
+export type NewComplaint = { categoryId: string; description: string; location: string; coords?: Coords; photo?: string };
 export type StatusUpdate = { status: Status; note?: string; department?: string };
 /** Text in both languages; a blank English text falls back to the Hindi one on the server. */
 export type NewNotice = { tag: NoticeTag; title: L; body: L };
@@ -42,7 +43,11 @@ export type ErrorCode =
   | 'exists' // mobile number / user ID / application already exists
   | 'in_use' // cannot delete: other records still refer to it (e.g. a scheme with applications)
   | 'invalid' // the request body failed validation
+  | 'too_large' // 413: the upload (e.g. a photo) is too big
   | 'network'; // the server could not be reached
+
+/** Largest photo the server accepts, as the length of its data: URL (about 525 KB of image). */
+export const MAX_PHOTO_BYTES = 700_000;
 
 export class ApiError extends Error {
   constructor(public status: number, public code: ErrorCode) {
@@ -76,7 +81,7 @@ export interface Api {
   listRequests(query?: RequestQuery): Promise<Request[]>;
   /** GET /requests/:id – 404 when a citizen asks for someone else's */
   getRequest(id: string): Promise<Request>;
-  /** POST /requests/complaints – citizens only */
+  /** POST /requests/complaints – citizens only → 413 too_large for a photo over MAX_PHOTO_BYTES */
   createComplaint(c: NewComplaint): Promise<Request>;
   /** POST /requests/applications – citizens only; open schemes only (400 invalid) → 409 exists when already applied */
   applyScheme(schemeId: string): Promise<Request>;
@@ -84,9 +89,14 @@ export interface Api {
   updateStatus(id: string, update: StatusUpdate): Promise<Request>;
   /** POST /requests/:id/confirm – the citizen who raised a resolved request */
   confirmResolution(id: string): Promise<Request>;
+  /**
+   * POST /requests/:id/reopen { reason } – the citizen who raised a resolved complaint, within REOPEN_DAYS and
+   * before confirming it; it goes back to REOPEN_STATUS with the reason as a note → 400 invalid otherwise
+   */
+  reopenRequest(id: string, reason: string): Promise<Request>;
 
   // ---- Notices ----
-  /** GET /notices – public */
+  /** GET /notices – public, newest first */
   listNotices(): Promise<Notice[]>;
   /** POST /notices – staff only */
   createNotice(n: NewNotice): Promise<Notice>;

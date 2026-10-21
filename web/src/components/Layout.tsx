@@ -14,6 +14,7 @@ const LINKS: { to: string; hi: string; en: string; roles?: Role[] }[] = [
   { to: '/requests', hi: 'मेरी आवेदनें', en: 'My Applications', roles: ['citizen'] },
   { to: '/updates', hi: 'सूचनाएँ', en: 'Updates' },
   { to: '/dashboard', hi: 'गाँव की प्रगति', en: 'Village Dashboard' },
+  { to: '/about', hi: 'सहायता', en: 'Help' },
   { to: '/admin', hi: 'प्रशासक डैशबोर्ड', en: 'Admin Dashboard', roles: ['admin', 'superadmin'] },
 ];
 
