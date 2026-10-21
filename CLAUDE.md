@@ -35,8 +35,8 @@ Atlas connection string goes in the server's `.env` (never committed). Decisions
   `DEMO_MODE=true`. A real deployment creates just the super admin from `.env`.
 
 **Shared code:** `shared/data.ts` (types, catalogue, rules such as `nextStatuses`), `shared/api.ts` (the
-`Api` interface: every endpoint with its REST route and error codes), `shared/seed.ts` (sample data),
-`shared/colors.ts`. Both web and server import them as `@shared/...`. Keep `shared/` free of browser-
+`Api` interface: every endpoint with its REST route and error codes), `shared/validate.ts` (input checks
+for content, used by server and mock), `shared/seed.ts` (sample data), `shared/colors.ts`. Both web and server import them as `@shared/...`. Keep `shared/` free of browser-
 and Node-specific code, and of dependencies.
 
 **Website data flow:** pages → hooks in `web/src/api/hooks.ts` (TanStack Query) → the `Api` interface in

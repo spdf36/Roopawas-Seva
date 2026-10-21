@@ -4,9 +4,19 @@ Express 5 + TypeScript (run directly with `tsx`, no build step) + MongoDB Atlas 
 implements the API contract in `../shared/api.ts`, which the website also uses; types and rules come from
 `../shared`.
 
-**Status:** being built in stages. Done: project setup (stage 1), database models, demo seed and setup
-(stage 2), auth and accounts (stage 3: `/auth/*`, `/accounts/*`), requests and photos (stage 4:
-`/requests/*`, `/photos/*`). Content (notices, schemes, works, figures) follows.
+**Status:** every endpoint in `../shared/api.ts` is implemented: auth and accounts (`/auth/*`,
+`/accounts/*`), requests and photos (`/requests/*`, `/photos/*`), content (`/notices`, `/schemes`,
+`/works`), the village figures (`/stats/*`) and the demo reset (`/demo/reset`, demo mode only). Next: the
+website switches from its mock to this server.
+
+## Content
+
+- Notices, schemes, development works and the public village figures are readable by anyone; only staff
+  change them. Input is checked by `../shared/validate.ts`, which the website's mock uses too.
+- A scheme citizens have applied for cannot be deleted (`409 in_use`) – close it instead; closed schemes
+  are hidden from everyone but staff.
+- `POST /demo/reset` reloads the sample data, ends every session and deletes the photos the server saved.
+  It only exists with `DEMO_MODE=true`; otherwise it is a 404.
 
 ## Requests and photos
 
@@ -99,7 +109,7 @@ Every error is JSON `{ "code": "..." }` with a matching HTTP status, using the c
 | `src/db.ts` | MongoDB connection |
 | `src/models.ts` | Mongoose models (one per collection) |
 | `src/serialize.ts` | Turns documents into the shared API types – the only way data leaves the server |
-| `src/routes/` | The endpoints, one file per area (`auth.ts`, `accounts.ts`, `requests.ts`) |
+| `src/routes/` | The endpoints, one file per area (`auth`, `accounts`, `requests`, `content`, `stats`, `demo`) |
 | `src/photos.ts` | Checking and saving photos, signed photo links, and `GET /photos/:id` |
 | `src/auth.ts` | Sessions: start, end, and `authenticate(req, roles)` for routes |
 | `src/otp.ts` | Registration codes, and where an SMS provider plugs in |

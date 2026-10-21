@@ -1,12 +1,12 @@
-import { Api, ApiError, MAX_PHOTO_BYTES, NewNotice, SchemeInput, User, WorkInput } from '@shared/api';
+import { Api, ApiError, MAX_PHOTO_BYTES, User } from '@shared/api';
 import {
-  Account, BASELINE_FIELDS, Baseline, CATEGORIES, Coords, DEPARTMENTS, DevelopmentWork, L, NOTICE_TAGS, Notice, REOPEN_STATUS, Request, Role,
-  SCHEME_GROUPS, Scheme, TAG_VISUAL, canReopen, isMobile, isPin, isStaff, isStaffLoginId, matchesFilter, nextStatuses, normaliseLoginId,
-  updatedAt,
+  Account, Baseline, CATEGORIES, Coords, DevelopmentWork, Notice, REOPEN_STATUS, Request, Role, Scheme, TAG_VISUAL, canReopen, isMobile,
+  isPin, isStaff, isStaffLoginId, matchesFilter, nextStatuses, normaliseLoginId, updatedAt,
 } from '@shared/data';
 import {
   FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS,
 } from '@shared/seed';
+import { cleanBaseline, cleanNotice, cleanScheme, cleanWork, isDepartment } from '@shared/validate';
 
 /**
  * A stand-in for the backend that runs in the browser and keeps its "database" in localStorage.
@@ -67,9 +67,6 @@ const fail = (status: number, code: ApiError['code']): never => {
 };
 
 const toUser = ({ pin: _pin, ...user }: Account): User => user;
-const filled = (v: L) => !!v.hi.trim();
-/** Trims bilingual text; a blank English text falls back to the Hindi one. */
-const bilingual = (v: L): L => ({ hi: v.hi.trim(), en: v.en.trim() || v.hi.trim() });
 const isOpen = (r: Request) => r.status !== 'resolved' && r.status !== 'rejected';
 const newToken = () => crypto.randomUUID();
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -86,31 +83,6 @@ function cleanPhoto(photo: string | undefined): string | undefined {
   if (!/^data:image\/(jpeg|png|webp);base64,/.test(photo)) return fail(400, 'invalid');
   if (photo.length > MAX_PHOTO_BYTES) return fail(413, 'too_large');
   return photo;
-}
-
-function cleanNotice({ tag, title, body }: NewNotice): Pick<Notice, 'tag' | 'title' | 'body'> {
-  if (!NOTICE_TAGS.some((x) => x.id === tag) || !filled(title) || !filled(body)) return fail(400, 'invalid');
-  return { tag, title: bilingual(title), body: bilingual(body) };
-}
-
-function cleanScheme({ groupId, name, desc, dept, open }: SchemeInput): SchemeInput {
-  if (!SCHEME_GROUPS.some((g) => g.id === groupId) || !DEPARTMENTS[dept] || !filled(name) || !filled(desc)) return fail(400, 'invalid');
-  return { groupId, dept, open: !!open, name: bilingual(name), desc: bilingual(desc) };
-}
-
-function cleanWork({ name, progress, budget }: WorkInput): WorkInput {
-  if (!filled(name) || !Number.isInteger(progress) || progress < 0 || progress > 100) return fail(400, 'invalid');
-  return { name: bilingual(name), progress, budget: budget.trim() };
-}
-
-function cleanBaseline(b: Baseline): Baseline {
-  const out = {} as Baseline;
-  for (const { id } of BASELINE_FIELDS) {
-    const n = b[id];
-    if (!Number.isInteger(n) || n < 0) return fail(400, 'invalid');
-    out[id] = n;
-  }
-  return out;
 }
 
 function find<T extends { id: string }>(list: T[], id: string): T {
@@ -278,7 +250,7 @@ export function createMockApi(getToken: () => string | null): Api {
         const user = auth(db, ['admin', 'superadmin']);
         const r = findRequest(db, id, user);
         if (!nextStatuses(r.status).includes(status)) return fail(400, 'invalid');
-        if (department !== undefined && !DEPARTMENTS[department]) return fail(400, 'invalid');
+        if (department !== undefined && !isDepartment(department)) return fail(400, 'invalid');
         r.status = status;
         r.department = department ?? r.department;
         r.confirmed = status === 'resolved' ? r.confirmed : false;

@@ -1,7 +1,8 @@
 import { RequestSort } from '@shared/api';
 import {
-  CATEGORIES, DEPARTMENTS, REOPEN_STATUS, RequestFilter, Status, canReopen, isStaff, nextStatuses,
+  CATEGORIES, REOPEN_STATUS, RequestFilter, Status, canReopen, isStaff, nextStatuses,
 } from '@shared/data';
+import { isDepartment } from '@shared/validate';
 import { Router } from 'express';
 import { QueryFilter, SortOrder } from 'mongoose';
 import { STAFF, authenticate } from '../auth';
@@ -145,7 +146,7 @@ requestsRouter.patch('/:id/status', async (req, res) => {
   const status = str(b.status) as Status;
   const note = str(b.note).trim().slice(0, MAX_NOTE) || undefined;
   const department = b.department === undefined ? undefined : str(b.department);
-  if (department !== undefined && !DEPARTMENTS[department]) fail(400, 'invalid');
+  if (department !== undefined && !isDepartment(department)) fail(400, 'invalid');
   const request = await findVisible(param(req, 'id'), user);
   // Only forward along the flow, or to rejected; resolved and rejected requests are closed.
   if (!nextStatuses(request.status).includes(status)) fail(400, 'invalid');

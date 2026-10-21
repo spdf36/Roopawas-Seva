@@ -48,7 +48,9 @@ export async function loadSampleData() {
     publishedAt: new Date(publishedAt),
     updatedAt: updatedAt ? new Date(updatedAt) : undefined,
   })));
-  await SchemeModel.insertMany(SEED_SCHEMES.map(({ id, ...s }) => ({ ...s, _id: id })));
-  await WorkModel.insertMany(SEED_WORKS.map(({ id: _sampleId, ...w }) => w));
+  // A millisecond apart, so lists sorted by creation keep the sample order.
+  const now = Date.now();
+  await SchemeModel.insertMany(SEED_SCHEMES.map(({ id, ...s }, i) => ({ ...s, _id: id, createdAt: new Date(now + i) })));
+  await WorkModel.insertMany(SEED_WORKS.map(({ id: _sampleId, ...w }, i) => ({ ...w, createdAt: new Date(now + i) })));
   await BaselineModel.create({ _id: BASELINE_ID, ...SEED_BASELINE });
 }

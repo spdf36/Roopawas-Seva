@@ -7,7 +7,10 @@ import { dbReady } from './db';
 import { photosRouter } from './photos';
 import { accountsRouter } from './routes/accounts';
 import { authRouter } from './routes/auth';
+import { noticesRouter, schemesRouter, worksRouter } from './routes/content';
+import { demoRouter } from './routes/demo';
 import { requestsRouter } from './routes/requests';
+import { statsRouter } from './routes/stats';
 
 /** The Express app, without starting a server, so it can also be used in tests. */
 export function createApp() {
@@ -30,6 +33,11 @@ export function createApp() {
   app.use('/accounts', accountsRouter);
   app.use('/requests', requestsRouter);
   app.use('/photos', photosRouter);
+  app.use('/notices', noticesRouter);
+  app.use('/schemes', schemesRouter);
+  app.use('/works', worksRouter);
+  app.use('/stats', statsRouter);
+  app.use('/demo', demoRouter);
 
   // Unknown routes answer like any other API error.
   app.use(() => {
