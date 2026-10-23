@@ -1,4 +1,4 @@
-import { Account, Baseline, Coords, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from './data';
+import { Account, ApprovalLevel, Baseline, Coords, Expense, Fund, Instalment, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status, Yojna } from './data';
 
 /** An account as the API returns it: the PIN never leaves the server. */
 export type User = Omit<Account, 'pin'>;
@@ -13,7 +13,13 @@ export type StatusUpdate = { status: Status; note?: string; department?: string 
 /** Text in both languages; a blank English text falls back to the Hindi one on the server. */
 export type NewNotice = { tag: NoticeTag; title: L; body: L };
 export type SchemeInput = Omit<Scheme, 'id'>;
-export type WorkInput = Omit<DevelopmentWork, 'id'>;
+/** A yojna's own details; its money is recorded through the fund and expense endpoints. */
+export type YojnaInput = Pick<Yojna, 'name' | 'desc' | 'dept' | 'status' | 'statusNote' | 'progress'> & { levels: ApprovalLevel[] };
+export type FundInput = Omit<Fund, 'id' | 'instalments'>;
+export type InstalmentInput = Omit<Instalment, 'id'>;
+/** `bill`: a JPEG data: URL of the bill or receipt (compressed like complaint photos). On an update, leaving it
+ * out keeps the current bill and `null` removes it. */
+export type ExpenseInput = Omit<Expense, 'id' | 'bill'> & { bill?: string | null };
 export type AccountFilter = 'citizen' | 'staff';
 
 /** `demoMode`: sample data, demo logins, any-4-digit OTPs and the Reset demo button. */
@@ -49,6 +55,7 @@ export type ErrorCode =
   | 'too_large' // 413: the upload (e.g. a photo) is too big
   | 'rate_limited' // 429: too many attempts (logins, OTPs); try again later
   | 'server_error' // 500: something unexpected failed on the server
+  | 'unavailable' // 501: needs the real server (the website's offline mock does not have this feature)
   | 'network'; // the server could not be reached
 
 /** Largest photo the server accepts, as the length of its data: URL (about 525 KB of image). */
@@ -124,15 +131,33 @@ export interface Api {
   /** DELETE /schemes/:id – staff only → 409 in_use when citizens have applied (close it instead) */
   deleteScheme(id: string): Promise<void>;
 
-  // ---- Village development works ----
-  /** GET /works – public */
-  listWorks(): Promise<DevelopmentWork[]>;
-  /** POST /works – staff only */
-  createWork(w: WorkInput): Promise<DevelopmentWork>;
-  /** PUT /works/:id – staff only */
-  updateWork(id: string, w: WorkInput): Promise<DevelopmentWork>;
-  /** DELETE /works/:id – staff only */
-  deleteWork(id: string): Promise<void>;
+  // ---- Village Yojnas (public to read, staff to change; every change answers with the whole yojna) ----
+  /** GET /yojnas – public, oldest first */
+  listYojnas(): Promise<Yojna[]>;
+  /** GET /yojnas/:id – public */
+  getYojna(id: string): Promise<Yojna>;
+  /** POST /yojnas YojnaInput – staff only. Approved levels must come first, in order (400 invalid otherwise) */
+  createYojna(y: YojnaInput): Promise<Yojna>;
+  /** PUT /yojnas/:id YojnaInput – staff only */
+  updateYojna(id: string, y: YojnaInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id – staff only → 409 in_use while funds or expenses are recorded (remove those first) */
+  deleteYojna(id: string): Promise<void>;
+  /** POST /yojnas/:id/funds FundInput – staff only */
+  addFund(yojnaId: string, f: FundInput): Promise<Yojna>;
+  /** PUT /yojnas/:id/funds/:fundId FundInput – staff only; the sanctioned amount cannot go below what was received → 400 invalid */
+  updateFund(yojnaId: string, fundId: string, f: FundInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id/funds/:fundId – staff only → 409 in_use while it has instalments or expenses */
+  deleteFund(yojnaId: string, fundId: string): Promise<Yojna>;
+  /** POST /yojnas/:id/funds/:fundId/instalments InstalmentInput – staff only; never more than sanctioned in total → 400 invalid */
+  addInstalment(yojnaId: string, fundId: string, i: InstalmentInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id/funds/:fundId/instalments/:instalmentId – staff only */
+  deleteInstalment(yojnaId: string, fundId: string, instalmentId: string): Promise<Yojna>;
+  /** POST /yojnas/:id/expenses ExpenseInput – staff only → 413 too_large for a bill photo over MAX_PHOTO_BYTES */
+  addExpense(yojnaId: string, e: ExpenseInput): Promise<Yojna>;
+  /** PUT /yojnas/:id/expenses/:expenseId ExpenseInput – staff only */
+  updateExpense(yojnaId: string, expenseId: string, e: ExpenseInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id/expenses/:expenseId – staff only */
+  deleteExpense(yojnaId: string, expenseId: string): Promise<Yojna>;
 
   // ---- Village dashboard ----
   /** GET /stats/village – public */

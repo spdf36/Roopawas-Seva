@@ -3,7 +3,7 @@
  */
 import { C } from './colors';
 import {
-  Account, Baseline, DAY, DevelopmentWork, FLOW, L, Notice, Request, Role, Scheme, Status, l,
+  Account, ApprovalLevel, Baseline, DAY, Expense, FLOW, Fund, L, Notice, Request, Role, Scheme, Status, Yojna, l,
 } from './data';
 
 const d = (y: number, m: number, day: number) => new Date(y, m - 1, day, 10, 30).getTime();
@@ -80,12 +80,93 @@ export const SEED_BASELINE: Baseline = {
   trees: 250,
 };
 
-export const SEED_WORKS: DevelopmentWork[] = [
-  { id: 'd1', name: l('मुख्य सड़क का सीसी निर्माण', 'CC paving of the main road'), progress: 70, budget: '₹ 18.5 लाख' },
-  { id: 'd2', name: l('नई पानी की टंकी (वार्ड 4)', 'New water tank (Ward 4)'), progress: 45, budget: '₹ 12 लाख' },
-  { id: 'd3', name: l('सोलर स्ट्रीट लाइट – 40 पोल', 'Solar street lights – 40 poles'), progress: 90, budget: '₹ 6.4 लाख' },
-  { id: 'd4', name: l('स्कूल भवन की मरम्मत', 'School building repairs'), progress: 30, budget: '₹ 9 लाख' },
-  { id: 'd5', name: l('पौधारोपण अभियान – 500 पेड़', 'Plantation drive – 500 trees'), progress: 50, budget: '₹ 1.2 लाख' },
+// ---------- Village Yojnas ----------
+const LEVEL = {
+  gp: l('ग्राम पंचायत', 'Gram Panchayat'),
+  samiti: l('पंचायत समिति', 'Panchayat Samiti'),
+  district: l('ज़िला परिषद / ज़िला प्रशासन', 'Zila Parishad / District'),
+  state: l('राज्य सरकार', 'State Government'),
+  central: l('केंद्र सरकार', 'Central Government'),
+};
+const level = (name: L, approvedAt?: number): ApprovalLevel => (approvedAt ? { name, approvedAt } : { name });
+const fund = (id: string, source: string, sanctioned: number, note: string, instalments: [number, number][]): Fund => ({
+  id, source, sanctioned, note, instalments: instalments.map(([amount, date], i) => ({ id: `${id}-i${i + 1}`, amount, date, note: '' })),
+});
+const expense = (id: string, date: number, purpose: string, amount: number, category: string, fundId?: string): Expense => ({
+  id, date, purpose, amount, category, ...(fundId ? { fundId } : {}),
+});
+const yojna = (y: Omit<Yojna, 'createdAt' | 'updatedAt' | 'desc'> & { desc?: L; createdAt: number }): Yojna => ({
+  desc: { hi: '', en: '' },
+  ...y,
+  updatedAt: Math.max(y.createdAt, ...y.levels.map((lv) => lv.approvedAt ?? 0), ...y.expenses.map((e) => e.date), ...y.funds.flatMap((f) => f.instalments.map((i) => i.date))),
+});
+
+export const SEED_YOJNAS: Yojna[] = [
+  yojna({
+    id: 'y1', name: l('मुख्य सड़क का सीसी निर्माण', 'CC paving of the main road'), dept: 'pwd', status: 'active', statusNote: '', progress: 70, createdAt: d(2026, 3, 10),
+    desc: l('बस स्टैंड से पंचायत भवन तक 1.2 किमी सीमेंट-कंक्रीट सड़क।', '1.2 km cement-concrete road from the bus stand to the Panchayat office.'),
+    levels: [level(LEVEL.gp, d(2026, 3, 12)), level(LEVEL.samiti, d(2026, 4, 2)), level(LEVEL.district, d(2026, 4, 28))],
+    funds: [
+      fund('y1-f1', 'state', 1_500_000, 'मुख्यमंत्री ग्रामीण सड़क योजना', [[750_000, d(2026, 5, 15)], [450_000, d(2026, 8, 20)]]),
+      fund('y1-f2', 'panchayat', 350_000, '15वाँ वित्त आयोग', [[350_000, d(2026, 5, 20)]]),
+    ],
+    expenses: [
+      expense('y1-e1', d(2026, 6, 2), 'सीमेंट – 600 बोरी', 252_000, 'material', 'y1-f1'),
+      expense('y1-e2', d(2026, 6, 5), 'गिट्टी और रेत – 40 ट्रॉली', 186_000, 'material', 'y1-f1'),
+      expense('y1-e3', d(2026, 6, 30), 'मज़दूरी – जून', 164_000, 'labour', 'y1-f2'),
+      expense('y1-e4', d(2026, 7, 10), 'मिक्सर मशीन और रोलर किराया', 72_000, 'machinery', 'y1-f1'),
+      expense('y1-e5', d(2026, 7, 31), 'मज़दूरी – जुलाई', 171_000, 'labour', 'y1-f2'),
+      expense('y1-e6', d(2026, 9, 12), 'ठेकेदार भुगतान – प्रथम चरण', 340_000, 'contractor', 'y1-f1'),
+    ],
+  }),
+  yojna({
+    id: 'y2', name: l('नई पानी की टंकी (वार्ड 4)', 'New water tank (Ward 4)'), dept: 'phed', status: 'processing', progress: 0, createdAt: d(2026, 6, 18),
+    statusNote: 'ज़िला परिषद से तकनीकी स्वीकृति का इंतज़ार',
+    desc: l('50,000 लीटर की ओवरहेड टंकी और 2 किमी पाइपलाइन।', '50,000-litre overhead tank and 2 km of pipeline.'),
+    levels: [level(LEVEL.gp, d(2026, 6, 20)), level(LEVEL.samiti, d(2026, 7, 22)), level(LEVEL.district), level(LEVEL.state)],
+    funds: [fund('y2-f1', 'central', 1_200_000, 'जल जीवन मिशन', [])],
+    expenses: [],
+  }),
+  yojna({
+    id: 'y3', name: l('सोलर स्ट्रीट लाइट – 40 पोल', 'Solar street lights – 40 poles'), dept: 'power', status: 'completed', statusNote: '', progress: 100, createdAt: d(2026, 1, 15),
+    levels: [level(LEVEL.gp, d(2026, 1, 16)), level(LEVEL.samiti, d(2026, 2, 3))],
+    funds: [fund('y3-f1', 'mpmla', 640_000, 'विधायक स्थानीय क्षेत्र विकास निधि', [[400_000, d(2026, 2, 20)], [240_000, d(2026, 4, 10)]])],
+    expenses: [
+      expense('y3-e1', d(2026, 3, 1), 'सोलर लाइट सेट – 40 नग', 520_000, 'material', 'y3-f1'),
+      expense('y3-e2', d(2026, 3, 8), 'ढुलाई', 18_000, 'transport', 'y3-f1'),
+      expense('y3-e3', d(2026, 3, 25), 'पोल लगाने की मज़दूरी', 96_000, 'labour', 'y3-f1'),
+    ],
+  }),
+  yojna({
+    id: 'y4', name: l('स्कूल भवन की मरम्मत', 'School building repairs'), dept: 'education', status: 'onhold', progress: 30, createdAt: d(2026, 4, 5),
+    statusNote: 'बारिश के कारण छत का काम रोका गया; अगली किस्त राज्य स्तर पर लंबित',
+    levels: [level(LEVEL.gp, d(2026, 4, 6)), level(LEVEL.samiti, d(2026, 4, 25)), level(LEVEL.state)],
+    funds: [fund('y4-f1', 'state', 900_000, 'समग्र शिक्षा अभियान', [[300_000, d(2026, 5, 30)]])],
+    expenses: [
+      expense('y4-e1', d(2026, 6, 10), 'छत की टाइल और वॉटरप्रूफिंग सामग्री', 148_000, 'material', 'y4-f1'),
+      expense('y4-e2', d(2026, 6, 28), 'मज़दूरी', 61_000, 'labour', 'y4-f1'),
+    ],
+  }),
+  yojna({
+    id: 'y5', name: l('पौधारोपण अभियान – 500 पेड़', 'Plantation drive – 500 trees'), dept: 'panchayat', status: 'active', statusNote: '', progress: 50, createdAt: d(2026, 7, 1),
+    levels: [level(LEVEL.gp, d(2026, 7, 2))],
+    funds: [
+      fund('y5-f1', 'panchayat', 80_000, '', [[80_000, d(2026, 7, 5)]]),
+      fund('y5-f2', 'public', 40_000, 'ग्रामवासियों का सहयोग', [[25_000, d(2026, 7, 15)]]),
+    ],
+    expenses: [
+      expense('y5-e1', d(2026, 7, 20), 'पौधे – 250 नग', 37_500, 'material', 'y5-f1'),
+      expense('y5-e2', d(2026, 7, 21), 'गड्ढे खुदाई', 22_000, 'labour'),
+    ],
+  }),
+  yojna({
+    id: 'y6', name: l('सामुदायिक भवन', 'Community hall'), dept: 'panchayat', status: 'proposed', progress: 0, createdAt: d(2026, 9, 25),
+    statusNote: 'अगली ग्राम सभा में प्रस्ताव रखा जाएगा',
+    desc: l('शादी-समारोह और ग्राम सभा के लिए 200 लोगों का हॉल।', 'A hall for 200 people for weddings and Gram Sabha meetings.'),
+    levels: [level(LEVEL.gp), level(LEVEL.samiti), level(LEVEL.district), level(LEVEL.state), level(LEVEL.central)],
+    funds: [],
+    expenses: [],
+  }),
 ];
 
 // ---------- Accounts ----------

@@ -1,7 +1,7 @@
 import { User } from '@shared/api';
-import { Baseline, BASELINE_FIELDS, DevelopmentWork, Notice, Request, Scheme } from '@shared/data';
-import { AccountDoc, NoticeDoc, RequestDoc, SchemeDoc, WorkDoc } from './models';
-import { photoUrl } from './photos';
+import { Baseline, BASELINE_FIELDS, Notice, Request, Scheme, Yojna } from '@shared/data';
+import { AccountDoc, NoticeDoc, RequestDoc, SchemeDoc, YojnaDoc } from './models';
+import { billUrl, photoUrl } from './photos';
 
 // Turns stored documents into the shared API types. Everything sent to a client goes through here, so
 // fields that must never leave the server (the PIN hash, the photo's file name) are left out by design.
@@ -67,11 +67,33 @@ export const toScheme = (s: SchemeDoc): Scheme => ({
   open: s.open,
 });
 
-export const toWork = (w: WorkDoc): DevelopmentWork => ({
-  id: w._id.toString(),
-  name: { hi: w.name.hi, en: w.name.en },
-  progress: w.progress,
-  budget: w.budget,
+export const toYojna = (y: YojnaDoc): Yojna => ({
+  id: y._id.toString(),
+  name: { hi: y.name.hi, en: y.name.en },
+  desc: { hi: y.desc?.hi ?? '', en: y.desc?.en ?? '' },
+  dept: y.dept,
+  status: y.status,
+  statusNote: y.statusNote,
+  progress: y.progress,
+  levels: y.levels.map((lv) => compact({ name: { hi: lv.name.hi, en: lv.name.en }, approvedAt: lv.approvedAt?.getTime() })),
+  funds: y.funds.map((f) => ({
+    id: f._id.toString(),
+    source: f.source,
+    sanctioned: f.sanctioned,
+    note: f.note,
+    instalments: f.instalments.map((i) => ({ id: i._id.toString(), amount: i.amount, date: i.date.getTime(), note: i.note })),
+  })),
+  expenses: y.expenses.map((e) => compact({
+    id: e._id.toString(),
+    date: e.date.getTime(),
+    purpose: e.purpose,
+    amount: e.amount,
+    category: e.category,
+    fundId: e.fundId,
+    bill: e.bill ? billUrl(e.bill) : undefined,
+  })),
+  createdAt: y.createdAt.getTime(),
+  updatedAt: y.updatedAt.getTime(),
 });
 
 export const toBaseline = (b: Baseline): Baseline => Object.fromEntries(BASELINE_FIELDS.map(({ id }) => [id, b[id]])) as Baseline;

@@ -13,7 +13,7 @@ backend in `../server` or by a mock that runs in the browser:
   browser (localStorage), nothing shared between browsers. Handy for working on the UI offline.
 
 Demo logins, the "any 4 digits" OTP hint and **Reset demo** only appear when the server is in demo mode
-(the mock always is).
+(the mock always is). Village Yojnas need the server; on the mock their pages say so.
 
 ## Run it
 
@@ -50,7 +50,7 @@ page; see the main README for the full list.
 | Path | What |
 | --- | --- |
 | `src/App.tsx` | Routes |
-| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel, `AdminContent.tsx` its content pages (notices, schemes, works, figures) |
+| `src/pages/` | One file per page; `Admin.tsx` holds the Sarpanch panel, `AdminContent.tsx` its content pages (notices, schemes, figures), `Yojnas.tsx` / `AdminYojnas.tsx` the village Yojnas (public / staff) |
 | `src/components/` | Navbar/footer layout, shared UI, placeholder logo/banner (`Art.tsx`) |
 | `src/styles.css` | All styling; colours are CSS variables at the top |
 | `src/api/mock.ts` | In-browser mock server (enforces roles, ownership and status rules) |

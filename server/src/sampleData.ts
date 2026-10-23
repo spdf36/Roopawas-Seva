@@ -1,11 +1,12 @@
 import { normaliseLoginId } from '@shared/data';
-import { FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS } from '@shared/seed';
+import { Types } from 'mongoose';
+import { FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_YOJNAS } from '@shared/seed';
 import {
-  AccountModel, BASELINE_ID, BaselineModel, CounterModel, NoticeModel, OtpModel, RequestModel, SchemeModel, SessionModel, WorkModel,
+  AccountModel, BASELINE_ID, BaselineModel, CounterModel, NoticeModel, OtpModel, RequestModel, SchemeModel, SessionModel, YojnaModel,
 } from './models';
 import { hashPin } from './pins';
 
-export const ALL_MODELS = [AccountModel, SessionModel, OtpModel, RequestModel, CounterModel, NoticeModel, SchemeModel, WorkModel, BaselineModel];
+export const ALL_MODELS = [AccountModel, SessionModel, OtpModel, RequestModel, CounterModel, NoticeModel, SchemeModel, YojnaModel, BaselineModel];
 
 /** The sequence that request numbers (RP-2026-00128…) are taken from. */
 export const REQUEST_COUNTER = 'request';
@@ -51,6 +52,25 @@ export async function loadSampleData() {
   // A millisecond apart, so lists sorted by creation keep the sample order.
   const now = Date.now();
   await SchemeModel.insertMany(SEED_SCHEMES.map(({ id, ...s }, i) => ({ ...s, _id: id, createdAt: new Date(now + i) })));
-  await WorkModel.insertMany(SEED_WORKS.map(({ id: _sampleId, ...w }, i) => ({ ...w, createdAt: new Date(now + i) })));
+  // Sample IDs (y1, y1-f1…) become ObjectIds; an expense's fund is looked up by its sample ID.
+  await YojnaModel.insertMany(SEED_YOJNAS.map(({ id: _sampleId, createdAt, updatedAt, levels, funds, expenses, ...y }) => {
+    const fundIds = new Map(funds.map((f) => [f.id, new Types.ObjectId()]));
+    return {
+      ...y,
+      createdAt: new Date(createdAt),
+      updatedAt: new Date(updatedAt),
+      levels: levels.map((lv) => ({ name: lv.name, approvedAt: lv.approvedAt ? new Date(lv.approvedAt) : undefined })),
+      funds: funds.map(({ id, instalments, ...f }) => ({
+        ...f,
+        _id: fundIds.get(id),
+        instalments: instalments.map(({ id: _i, date, ...i }) => ({ ...i, date: new Date(date) })),
+      })),
+      expenses: expenses.map(({ id: _e, date, fundId, bill: _noSampleBills, ...e }) => ({
+        ...e,
+        date: new Date(date),
+        fundId: fundId ? fundIds.get(fundId)?.toString() : undefined,
+      })),
+    };
+  }));
   await BaselineModel.create({ _id: BASELINE_ID, ...SEED_BASELINE });
 }

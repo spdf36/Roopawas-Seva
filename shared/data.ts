@@ -226,8 +226,90 @@ export const BASELINE_FIELDS: { id: keyof Baseline; name: L }[] = [
   { id: 'trees', name: l('लगाए गए पेड़', 'Trees planted') },
 ];
 
-/** A village development work, shown publicly with its progress (0–100 %). */
-export type DevelopmentWork = { id: string; name: L; progress: number; budget: string };
+// ---------- Village Yojnas (development works with their funds) ----------
+/** Public, like everything about a yojna: villagers see its status, approvals, money received and spent. */
+export type YojnaStatus = 'proposed' | 'processing' | 'onhold' | 'active' | 'completed';
+
+export const YOJNA_STATUSES: YojnaStatus[] = ['proposed', 'processing', 'onhold', 'active', 'completed'];
+
+export const YOJNA_STATUS: Record<YojnaStatus, Visual & { name: L; hint: L }> = {
+  proposed: { name: l('प्रस्तावित', 'Proposed'), hint: l('प्रस्ताव तैयार है, स्वीकृति के लिए अभी भेजा नहीं गया', 'Proposal ready, not yet sent for approval'), icon: 'lightbulb-outline', color: C.purple, soft: C.purpleSoft },
+  processing: { name: l('स्वीकृति प्रक्रिया में', 'Processing'), hint: l('स्वीकृति के लिए विभिन्न स्तरों पर', 'Going through the approval levels'), icon: 'progress-clock', color: C.blue, soft: C.blueSoft },
+  onhold: { name: l('रुकी हुई', 'On hold'), hint: l('किसी कारण से अभी रुकी है', 'Paused for now'), icon: 'pause-circle-outline', color: C.red, soft: C.redSoft },
+  active: { name: l('कार्य चालू', 'Active'), hint: l('स्वीकृत, काम चल रहा है', 'Approved, work in progress'), icon: 'hammer-wrench', color: C.orange, soft: C.orangeSoft },
+  completed: { name: l('पूर्ण', 'Completed'), hint: l('काम पूरा हो गया', 'Work finished'), icon: 'check-circle-outline', color: C.green, soft: C.greenSoft },
+};
+
+/** Where a yojna's money comes from. */
+export const FUND_SOURCES: Record<string, L> = {
+  central: l('केंद्र सरकार', 'Central Government'),
+  state: l('राज्य सरकार', 'State Government'),
+  district: l('ज़िला परिषद', 'Zila Parishad (District)'),
+  samiti: l('पंचायत समिति', 'Panchayat Samiti'),
+  panchayat: l('ग्राम पंचायत निधि', 'Gram Panchayat funds'),
+  mpmla: l('सांसद / विधायक निधि', 'MP / MLA fund'),
+  public: l('जन सहयोग', 'Public contribution'),
+  other: l('अन्य', 'Other'),
+};
+
+export const EXPENSE_CATEGORIES: Record<string, Visual & { name: L }> = {
+  material: { name: l('सामग्री', 'Material'), icon: 'package-variant-closed', color: C.blue, soft: C.blueSoft },
+  labour: { name: l('मज़दूरी', 'Labour'), icon: 'account-hard-hat', color: C.orange, soft: C.orangeSoft },
+  machinery: { name: l('मशीन / उपकरण', 'Machinery / Equipment'), icon: 'excavator', color: C.teal, soft: C.tealSoft },
+  contractor: { name: l('ठेकेदार भुगतान', 'Contractor payment'), icon: 'handshake-outline', color: C.purple, soft: C.purpleSoft },
+  transport: { name: l('ढुलाई', 'Transport'), icon: 'truck-outline', color: C.green, soft: C.greenSoft },
+  other: { name: l('अन्य', 'Other'), icon: 'dots-horizontal-circle-outline', color: C.sub, soft: '#EDF1F6' },
+};
+
+/** The usual places a yojna needs approval from, offered when staff set up its levels. */
+export const APPROVAL_LEVEL_PRESETS: L[] = [
+  l('ग्राम पंचायत', 'Gram Panchayat'),
+  l('पंचायत समिति', 'Panchayat Samiti'),
+  l('ज़िला परिषद / ज़िला प्रशासन', 'Zila Parishad / District'),
+  l('राज्य सरकार', 'State Government'),
+  l('केंद्र सरकार', 'Central Government'),
+];
+
+/** One place the yojna needs approval from, in order; `approvedAt` is set once it has approved. */
+export type ApprovalLevel = { name: L; approvedAt?: number };
+/** Money in whole rupees. */
+export type Instalment = { id: string; amount: number; date: number; note: string };
+export type Fund = { id: string; source: string; sanctioned: number; note: string; instalments: Instalment[] };
+/** `fundId`: which fund paid for it, when known. `bill`: link to the photo of the bill or receipt. */
+export type Expense = { id: string; date: number; purpose: string; amount: number; category: string; fundId?: string; bill?: string };
+
+export type Yojna = {
+  id: string;
+  name: L;
+  desc: L;
+  dept: string;
+  status: YojnaStatus;
+  /** Why it is on hold, what is awaited… shown with the status. */
+  statusNote: string;
+  /** Work done, 0–100 %. */
+  progress: number;
+  levels: ApprovalLevel[];
+  funds: Fund[];
+  expenses: Expense[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+/** The level the yojna is waiting on: the first one not yet approved, or -1 when all have approved. */
+export const currentLevel = (y: Pick<Yojna, 'levels'>) => y.levels.findIndex((lv) => !lv.approvedAt);
+
+const sum = (ns: number[]) => ns.reduce((a, b) => a + b, 0);
+export const fundReceived = (f: Fund) => sum(f.instalments.map((i) => i.amount));
+
+export function yojnaTotals(y: Pick<Yojna, 'funds' | 'expenses'>) {
+  const sanctioned = sum(y.funds.map((f) => f.sanctioned));
+  const received = sum(y.funds.map(fundReceived));
+  const spent = sum(y.expenses.map((e) => e.amount));
+  return { sanctioned, received, spent, balance: received - spent };
+}
+
+/** Indian digit grouping: ₹ 18,50,000. */
+export const fmtRupees = (n: number) => `₹ ${n.toLocaleString('en-IN')}`;
 
 // ---------- Accounts ----------
 export type Role = 'citizen' | 'admin' | 'superadmin';

@@ -90,7 +90,7 @@ img { max-width: 100%; }
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
 a.card, .card.link { display: block; transition: box-shadow 0.15s, transform 0.15s; }
 /* A card link laid out as a row (beats the display: block above). */
-a.card.row { display: flex; }
+a.card.row, a.card.stack { display: flex; }
 a.card:hover, .card.link:hover { box-shadow: 0 6px 18px rgba(11, 60, 140, 0.1); transform: translateY(-1px); }
 .grid { display: grid; gap: 16px; }
 .g2 { grid-template-columns: repeat(2, 1fr); }
@@ -197,16 +197,18 @@ tr.click:hover td { background: #f7faff; }
 .status-pick { border: 1.5px solid var(--c); color: var(--c); background: #fff; border-radius: 18px; padding: 5px 14px; font-weight: 700; font-size: 14px; }
 .status-pick.on { background: var(--c); color: #fff; }
 .status-pick:disabled { opacity: 0.35; cursor: not-allowed; }
+.level-input { min-width: 0; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; outline: none; }
+.level-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-soft); }
 
 /* ---------- Responsive ---------- */
-/* The header needs about 1280px in English with a user logged in, so it gets a wider container than the
-   page, tighter links on mid-size screens, and the menu button below 1200px. */
-.nav .container { max-width: 1320px; }
-@media (max-width: 1340px) {
+/* The header needs about 1300px in English with a user logged in, so it gets a wider container than the
+   page, tighter links on mid-size screens, and the menu button below 1300px. */
+.nav .container { max-width: 1400px; }
+@media (max-width: 1440px) {
   .nav-in { gap: 12px; }
   .nav-links a { padding: 7px 8px; font-size: 14px; }
 }
-@media (max-width: 1199px) {
+@media (max-width: 1299px) {
   .nav-toggle { display: block; margin-left: auto; }
   .nav-links, .nav-actions { display: none; }
   .nav.open .nav-links, .nav.open .nav-actions { display: flex; }

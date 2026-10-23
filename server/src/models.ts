@@ -1,4 +1,4 @@
-import { Baseline, BASELINE_FIELDS, FLOW, NoticeTag, Role, Status } from '@shared/data';
+import { Baseline, BASELINE_FIELDS, FLOW, NoticeTag, Role, Status, YOJNA_STATUSES, YojnaStatus } from '@shared/data';
 import { Schema, Types, model } from 'mongoose';
 
 // MongoDB collections. Dates are stored as Date; src/serialize.ts turns documents into the shared API types
@@ -207,23 +207,68 @@ const schemeSchema = new Schema<SchemeDoc>({
 
 export const SchemeModel = model<SchemeDoc>('Scheme', schemeSchema);
 
-// ---------- Development works ----------
-export interface WorkDoc {
+// ---------- Village Yojnas ----------
+// One document per yojna with its funds, instalments and expenses inside: they are always read together, and
+// saving the whole yojna under a version check (optimisticConcurrency) keeps two staff edits from overwriting each other.
+export interface InstalmentDoc { _id: Types.ObjectId; amount: number; date: Date; note: string }
+export interface FundDoc { _id: Types.ObjectId; source: string; sanctioned: number; note: string; instalments: InstalmentDoc[] }
+export interface ExpenseDoc {
+  _id: Types.ObjectId;
+  date: Date;
+  purpose: string;
+  amount: number;
+  category: string;
+  /** The fund that paid for it, as its ID string. */
+  fundId?: string;
+  /** File name of the bill photo inside the uploads folder. */
+  bill?: string;
+}
+export interface LevelDoc { name: LText; approvedAt?: Date }
+
+export interface YojnaDoc {
   _id: Types.ObjectId;
   name: LText;
+  desc: LText;
+  dept: string;
+  status: YojnaStatus;
+  statusNote: string;
   progress: number;
-  budget: string;
+  levels: LevelDoc[];
+  funds: FundDoc[];
+  expenses: ExpenseDoc[];
   createdAt: Date;
+  updatedAt: Date;
 }
 
-const workSchema = new Schema<WorkDoc>({
-  name: { type: lText, required: true },
-  progress: { type: Number, required: true, min: 0, max: 100 },
-  budget: { type: String, default: '' },
-  createdAt: { type: Date, required: true, default: Date.now },
-});
+const money = { type: Number, required: true, min: 0 };
 
-export const WorkModel = model<WorkDoc>('Work', workSchema);
+const yojnaSchema = new Schema<YojnaDoc>({
+  name: { type: lText, required: true },
+  desc: { type: new Schema<LText>({ hi: String, en: String }, { _id: false }), default: () => ({ hi: '', en: '' }) },
+  dept: { type: String, required: true },
+  status: { type: String, enum: YOJNA_STATUSES, required: true },
+  statusNote: { type: String, default: '' },
+  progress: { type: Number, required: true, min: 0, max: 100 },
+  levels: [new Schema<LevelDoc>({ name: { type: lText, required: true }, approvedAt: Date }, { _id: false })],
+  funds: [new Schema<FundDoc>({
+    source: { type: String, required: true },
+    sanctioned: money,
+    note: { type: String, default: '' },
+    instalments: [new Schema<InstalmentDoc>({ amount: money, date: { type: Date, required: true }, note: { type: String, default: '' } })],
+  })],
+  expenses: [new Schema<ExpenseDoc>({
+    date: { type: Date, required: true },
+    purpose: { type: String, required: true },
+    amount: money,
+    category: { type: String, required: true },
+    fundId: String,
+    bill: String,
+  })],
+  createdAt: { type: Date, required: true, default: Date.now },
+  updatedAt: { type: Date, required: true, default: Date.now },
+}, { optimisticConcurrency: true });
+
+export const YojnaModel = model<YojnaDoc>('Yojna', yojnaSchema);
 
 // ---------- Village figures ----------
 /** A single document holding the recorded figures the public dashboard starts from. */

@@ -1,12 +1,12 @@
 import { Api, ApiError, MAX_PHOTO_BYTES, User } from '@shared/api';
 import {
-  Account, Baseline, CATEGORIES, Coords, DevelopmentWork, Notice, REOPEN_STATUS, Request, Role, Scheme, TAG_VISUAL, canReopen, isMobile,
+  Account, Baseline, CATEGORIES, Coords, Notice, REOPEN_STATUS, Request, Role, Scheme, TAG_VISUAL, canReopen, isMobile,
   isPin, isStaff, isStaffLoginId, matchesFilter, nextStatuses, normaliseLoginId, updatedAt,
 } from '@shared/data';
 import {
-  FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS,
+  FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES,
 } from '@shared/seed';
-import { cleanBaseline, cleanNotice, cleanScheme, cleanWork, isDepartment } from '@shared/validate';
+import { cleanBaseline, cleanNotice, cleanScheme, isDepartment } from '@shared/validate';
 
 /**
  * A stand-in for the backend that runs in the browser and keeps its "database" in localStorage.
@@ -23,7 +23,6 @@ type Db = {
   requests: Request[];
   notices: Notice[];
   schemes: Scheme[];
-  works: DevelopmentWork[];
   baseline: Baseline;
   seq: number;
   /** Session token → account ID. */
@@ -31,7 +30,7 @@ type Db = {
 };
 
 const seed = (): Db => structuredClone({
-  accounts: SEED_ACCOUNTS, requests: SEED_REQUESTS, notices: SEED_NOTICES, schemes: SEED_SCHEMES, works: SEED_WORKS, baseline: SEED_BASELINE,
+  accounts: SEED_ACCOUNTS, requests: SEED_REQUESTS, notices: SEED_NOTICES, schemes: SEED_SCHEMES, baseline: SEED_BASELINE,
   seq: FIRST_NEW_SEQ, sessions: {},
 });
 
@@ -99,6 +98,9 @@ export function createMockApi(getToken: () => string | null): Api {
     // Callers get copies, as they would from a real server.
     return result === undefined ? result : structuredClone(result);
   }
+
+  /** For features that only the real server has. */
+  const unavailable = (): Promise<never> => call(() => fail(501, 'unavailable'));
 
   /** The logged-in, active account, if any (for endpoints that guests may also call). */
   function currentUser(db: Db): Account | undefined {
@@ -338,28 +340,20 @@ export function createMockApi(getToken: () => string | null): Api {
         db.schemes = db.schemes.filter((s) => s.id !== id);
       }),
 
-    listWorks: () => call((db) => db.works),
-
-    createWork: (w) =>
-      call((db) => {
-        auth(db, ['admin', 'superadmin']);
-        const work: DevelopmentWork = { id: newId('w'), ...cleanWork(w) };
-        db.works.push(work);
-        return work;
-      }),
-
-    updateWork: (id, w) =>
-      call((db) => {
-        auth(db, ['admin', 'superadmin']);
-        return Object.assign(find(db.works, id), cleanWork(w));
-      }),
-
-    deleteWork: (id) =>
-      call((db) => {
-        auth(db, ['admin', 'superadmin']);
-        find(db.works, id);
-        db.works = db.works.filter((w) => w.id !== id);
-      }),
+    // Village Yojnas were built for the real server only (see CLAUDE.md); offline, the pages say so.
+    listYojnas: unavailable,
+    getYojna: unavailable,
+    createYojna: unavailable,
+    updateYojna: unavailable,
+    deleteYojna: unavailable,
+    addFund: unavailable,
+    updateFund: unavailable,
+    deleteFund: unavailable,
+    addInstalment: unavailable,
+    deleteInstalment: unavailable,
+    addExpense: unavailable,
+    updateExpense: unavailable,
+    deleteExpense: unavailable,
 
     getBaseline: () =>
       call((db) => {

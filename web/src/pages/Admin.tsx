@@ -35,7 +35,7 @@ export function AdminLayout() {
     { to: '/admin/users', icon: 'account-outline', label: t('उपयोगकर्ता प्रबंधन', 'User management') },
     { to: '/admin/notices', icon: 'bell-outline', label: t('सूचनाएँ / नोटिफिकेशन', 'Notices / Notifications') },
     { to: '/admin/schemes', icon: 'bank-outline', label: t('योजना प्रबंधन', 'Scheme management') },
-    { to: '/admin/plan', icon: 'target', label: t('ग्राम विकास योजना', 'Village development plan') },
+    { to: '/admin/yojnas', icon: 'hammer-wrench', label: t('ग्राम विकास योजनाएँ', 'Village Yojnas') },
     { to: '/admin/figures', icon: 'counter', label: t('गाँव के आँकड़े', 'Village figures') },
   ];
 

@@ -33,10 +33,11 @@ export function parsePhoto(dataUrl: string): Photo {
   return { bytes, ext: type.ext };
 }
 
-/** Writes a checked photo for a request and returns its file name. */
-export async function savePhoto(photo: Photo, requestId: string): Promise<string> {
+/** Writes a checked photo and returns its file name: `<prefix>-<random>.<ext>`, the prefix being the request number
+ * (complaint photos) or `bill-<yojna ID>` (bills). */
+export async function savePhoto(photo: Photo, prefix: string): Promise<string> {
   // The name is ours, never the user's, so it cannot point outside the uploads folder.
-  const name = `${requestId}-${randomBytes(6).toString('hex')}.${photo.ext}`;
+  const name = `${prefix}-${randomBytes(6).toString('hex')}.${photo.ext}`;
   await fs.mkdir(config.uploadsDir, { recursive: true });
   await fs.writeFile(path.join(config.uploadsDir, name), photo.bytes, { flag: 'wx' });
   return name;
@@ -73,6 +74,27 @@ photosRouter.get('/:id', async (req, res) => {
   res.set({ 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' });
   res.sendFile(request!.photo!, { root: config.uploadsDir, dotfiles: 'deny' }, (err) => {
     // The file is missing on disk (e.g. the uploads folder was not kept across a deploy).
+    if (err && !res.headersSent) res.status(404).json({ code: 'not_found' });
+  });
+});
+
+// ---------- Bills ----------
+// Bills and receipts of yojna expenses are public, like the rest of a yojna, so they need no signed link. Their
+// file names are random and never reused (a replaced bill gets a new name), so browsers may cache them for good.
+
+/** Names of bill files written by savePhoto; only these are ever served from /bills. */
+export const BILL_FILE = /^bill-[0-9a-f]{24}-[0-9a-f]{12}\.(jpg|png|webp)$/;
+
+/** Link to a bill photo, relative to the API's address. */
+export const billUrl = (name: string) => `/bills/${name}`;
+
+export const billsRouter = Router();
+
+billsRouter.get('/:name', (req, res) => {
+  const name = param(req, 'name');
+  if (!BILL_FILE.test(name)) fail(404, 'not_found');
+  res.set({ 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+  res.sendFile(name, { root: config.uploadsDir, dotfiles: 'deny' }, (err) => {
     if (err && !res.headersSent) res.status(404).json({ code: 'not_found' });
   });
 });

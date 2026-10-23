@@ -4,13 +4,14 @@ import express, { ErrorRequestHandler } from 'express';
 import mongoose from 'mongoose';
 import { config } from './config';
 import { dbReady } from './db';
-import { photosRouter } from './photos';
+import { billsRouter, photosRouter } from './photos';
 import { accountsRouter } from './routes/accounts';
 import { authRouter } from './routes/auth';
-import { noticesRouter, schemesRouter, worksRouter } from './routes/content';
+import { noticesRouter, schemesRouter } from './routes/content';
 import { demoRouter } from './routes/demo';
 import { requestsRouter } from './routes/requests';
 import { statsRouter } from './routes/stats';
+import { yojnasRouter } from './routes/yojnas';
 
 /** The Express app, without starting a server, so it can also be used in tests. */
 export function createApp() {
@@ -20,7 +21,7 @@ export function createApp() {
   // Lets req.ip (used by the rate limits) be the visitor's address when behind a proxy.
   app.set('trust proxy', config.trustProxy);
   app.use(cors({ origin: config.webOrigins }));
-  // Photos arrive as compressed data: URLs inside JSON (at most MAX_PHOTO_BYTES), so allow a bit more than that.
+  // Photos and bills arrive as compressed data: URLs inside JSON (at most MAX_PHOTO_BYTES), so allow a bit more than that.
   app.use(express.json({ limit: '1mb' }));
 
   // For uptime checks: 503 while the database connection is down.
@@ -40,7 +41,8 @@ export function createApp() {
   app.use('/photos', photosRouter);
   app.use('/notices', noticesRouter);
   app.use('/schemes', schemesRouter);
-  app.use('/works', worksRouter);
+  app.use('/yojnas', yojnasRouter);
+  app.use('/bills', billsRouter);
   app.use('/stats', statsRouter);
   app.use('/demo', demoRouter);
 

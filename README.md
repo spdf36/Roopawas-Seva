@@ -56,7 +56,11 @@ were added, so it shows the earlier separate admin login)
   Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution,
   or reopen it with a reason within 30 days if the problem is not actually fixed
 - Latest notices from the government and the Panchayat, with their dates
-- Public village dashboard (roads, water, street lights, schemes, total requests, development works)
+- Public village dashboard (roads, water, street lights, schemes, total requests, village Yojnas)
+- **Village Yojnas**, open to everyone: each development yojna's status (Proposed, Processing, On hold,
+  Active, Completed), which approval level it is waiting on (e.g. Panchayat Samiti → District → State),
+  the money sanctioned by each source (central, state, district, MP/MLA fund…), the instalments received,
+  and every expense with its category and a photo of the bill
 - Help page: how to use the service and frequently asked questions
 
 **Sarpanch / admin**
@@ -67,8 +71,10 @@ were added, so it shows the earlier separate admin login)
 - Department-wise report and analytics
 - Citizen accounts
 - Manage the content citizens see: publish, edit and remove notices; add, edit, close and remove
-  schemes (a scheme with applications can only be closed); development works and their progress;
-  and the recorded figures behind the public dashboard
+  schemes (a scheme with applications can only be closed); and the recorded figures behind the public dashboard
+- Village Yojnas: create a yojna and set its approval levels, keep its status and progress current, record
+  funds, instalments (never more than sanctioned) and expenses with bill photos. Needs the backend; the
+  website's offline mock does not have it
 
 ## Quick start
 

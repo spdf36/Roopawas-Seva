@@ -1,5 +1,5 @@
 import { Api, ApiError, ErrorCode, RequestQuery } from '@shared/api';
-import { Request } from '@shared/data';
+import { Request, Yojna } from '@shared/data';
 
 /**
  * The real API over HTTP: each method calls the route documented on it in shared/api.ts.
@@ -39,6 +39,10 @@ export function createHttpApi(baseUrl: string, getToken: () => string | null): A
   /** Photo links come back relative to the API (/photos/…); images need the full address. */
   const withPhoto = (r: Request): Request => (r.photo?.startsWith('/') ? { ...r, photo: root + r.photo } : r);
   const request = async (p: Promise<Request>) => withPhoto(await p);
+  /** Bill links come back relative too. */
+  const withBills = (y: Yojna): Yojna => ({ ...y, expenses: y.expenses.map((e) => (e.bill?.startsWith('/') ? { ...e, bill: root + e.bill } : e)) });
+  const yojna = async (p: Promise<Yojna>) => withBills(await p);
+  const yp = (yid: string) => `/yojnas/${id(yid)}`;
 
   return {
     serverInfo: () => get('/info'),
@@ -72,10 +76,19 @@ export function createHttpApi(baseUrl: string, getToken: () => string | null): A
     updateScheme: (sid, s) => send('PUT', `/schemes/${id(sid)}`, s),
     deleteScheme: (sid) => send('DELETE', `/schemes/${id(sid)}`),
 
-    listWorks: () => get('/works'),
-    createWork: (w) => send('POST', '/works', w),
-    updateWork: (wid, w) => send('PUT', `/works/${id(wid)}`, w),
-    deleteWork: (wid) => send('DELETE', `/works/${id(wid)}`),
+    listYojnas: async () => (await get<Yojna[]>('/yojnas')).map(withBills),
+    getYojna: (yid) => yojna(get(yp(yid))),
+    createYojna: (y) => yojna(send('POST', '/yojnas', y)),
+    updateYojna: (yid, y) => yojna(send('PUT', yp(yid), y)),
+    deleteYojna: (yid) => send('DELETE', yp(yid)),
+    addFund: (yid, f) => yojna(send('POST', `${yp(yid)}/funds`, f)),
+    updateFund: (yid, fid, f) => yojna(send('PUT', `${yp(yid)}/funds/${id(fid)}`, f)),
+    deleteFund: (yid, fid) => yojna(send('DELETE', `${yp(yid)}/funds/${id(fid)}`)),
+    addInstalment: (yid, fid, i) => yojna(send('POST', `${yp(yid)}/funds/${id(fid)}/instalments`, i)),
+    deleteInstalment: (yid, fid, iid) => yojna(send('DELETE', `${yp(yid)}/funds/${id(fid)}/instalments/${id(iid)}`)),
+    addExpense: (yid, e) => yojna(send('POST', `${yp(yid)}/expenses`, e)),
+    updateExpense: (yid, eid, e) => yojna(send('PUT', `${yp(yid)}/expenses/${id(eid)}`, e)),
+    deleteExpense: (yid, eid) => yojna(send('DELETE', `${yp(yid)}/expenses/${id(eid)}`)),
 
     getVillageStats: () => get('/stats/village'),
     getBaseline: () => get('/stats/baseline'),

@@ -1,14 +1,14 @@
 import { TAG_VISUAL, isStaff } from '@shared/data';
-import { cleanNotice, cleanScheme, cleanWork } from '@shared/validate';
+import { cleanNotice, cleanScheme } from '@shared/validate';
 import { Router } from 'express';
 import { isValidObjectId } from 'mongoose';
 import { randomBytes } from 'node:crypto';
 import { STAFF, authenticate, currentUser } from '../auth';
 import { body, fail, param } from '../http';
-import { NoticeModel, RequestModel, SchemeModel, WorkModel } from '../models';
-import { toNotice, toScheme, toWork } from '../serialize';
+import { NoticeModel, RequestModel, SchemeModel } from '../models';
+import { toNotice, toScheme } from '../serialize';
 
-// What citizens read (notices, schemes, development works): public to read, staff to change.
+// What citizens read (notices, schemes): public to read, staff to change.
 
 const objectId = (req: Parameters<typeof param>[0]) => {
   const id = param(req, 'id');
@@ -86,32 +86,5 @@ schemesRouter.delete('/:id', async (req, res) => {
   // Applications point at the scheme, so once citizens have applied it can only be closed.
   if (await RequestModel.exists({ schemeId: id })) fail(409, 'in_use');
   await SchemeModel.deleteOne({ _id: id });
-  res.status(204).end();
-});
-
-// ---------- Development works ----------
-export const worksRouter = Router();
-
-worksRouter.get('/', async (_req, res) => {
-  const list = await WorkModel.find().sort({ createdAt: 1 }).lean();
-  res.json(list.map(toWork));
-});
-
-worksRouter.post('/', async (req, res) => {
-  await authenticate(req, STAFF);
-  const work = await WorkModel.create(cleanWork(body(req)));
-  res.status(201).json(toWork(work.toObject()));
-});
-
-worksRouter.put('/:id', async (req, res) => {
-  await authenticate(req, STAFF);
-  const updated = await WorkModel.findByIdAndUpdate(objectId(req), cleanWork(body(req)), { returnDocument: 'after' }).lean();
-  res.json(toWork(updated ?? fail(404, 'not_found')));
-});
-
-worksRouter.delete('/:id', async (req, res) => {
-  await authenticate(req, STAFF);
-  const { deletedCount } = await WorkModel.deleteOne({ _id: objectId(req) });
-  if (!deletedCount) fail(404, 'not_found');
   res.status(204).end();
 });

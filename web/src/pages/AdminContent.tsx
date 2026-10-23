@@ -1,14 +1,13 @@
 import { BASELINE_FIELDS, Baseline, DEPARTMENTS, NOTICE_TAGS, NoticeTag, SCHEME_GROUPS, Scheme, fmtDate } from '@shared/data';
 import { ReactNode, useState } from 'react';
-import { ApiError, NewNotice, SchemeInput, WorkInput } from '../api';
+import { ApiError, NewNotice, SchemeInput } from '../api';
 import {
-  useBaseline, useDeleteNotice, useDeleteScheme, useDeleteWork, useNotices, useSaveNotice, useSaveScheme, useSaveWork, useSchemes,
-  useUpdateBaseline, useWorks,
+  useBaseline, useDeleteNotice, useDeleteScheme, useNotices, useSaveNotice, useSaveScheme, useSchemes, useUpdateBaseline,
 } from '../api/hooks';
 import { Badge, BiField, Bubble, Field, Icon, Loaded, PageHead, Select, tint, useErrorText } from '../components/ui';
 import { useT } from '../store';
 
-// Staff pages for the content citizens see: notices, schemes, development works and the
+// Staff pages for the content citizens see: notices, schemes and the
 // dashboard's recorded figures. Each list item can be edited in the form at the top of its page.
 
 const blank = { hi: '', en: '' };
@@ -196,71 +195,6 @@ export function AdminSchemes() {
                 </section>
               );
             })}
-          </Loaded>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ---------- Development works ----------
-
-const EMPTY_WORK: WorkInput = { name: blank, progress: 0, budget: '' };
-const progressColor = (p: number) => (p >= 80 ? 'var(--green)' : 'var(--amber)');
-
-export function AdminPlan() {
-  const { t, tl } = useT();
-  const works = useWorks();
-  const save = useSaveWork();
-  const remove = useDeleteWork();
-  const errorText = useErrorText();
-  const [form, setForm] = useState<WorkInput>(EMPTY_WORK);
-  const [editId, setEditId] = useState<string>();
-  const [done, setDone] = useState('');
-
-  const reset = () => { setForm(EMPTY_WORK); setEditId(undefined); save.reset(); };
-  const change = (patch: Partial<WorkInput>) => { setForm({ ...form, ...patch }); setDone(''); };
-  const submit = () => save.mutate({ id: editId, work: form }, {
-    onSuccess: () => {
-      setDone(editId ? t('कार्य अपडेट हो गया।', 'Work updated.') : t('कार्य जुड़ गया। यह “गाँव की प्रगति” पर दिखेगा।', 'Work added. It is shown on the Village Dashboard.'));
-      reset();
-    },
-  });
-
-  return (
-    <>
-      <PageHead icon="target" title={t('ग्राम विकास योजना', 'Village Development Plan')} subtitle={t('विकास कार्य और उनकी प्रगति – “गाँव की प्रगति” पर सार्वजनिक', 'Development works and their progress – public on the Village Dashboard')} />
-      <div className="split">
-        <form className="card stack" onSubmit={(e) => { e.preventDefault(); submit(); }}>
-          <h3>{editId ? t('कार्य बदलें', 'Edit work') : t('नया विकास कार्य', 'New development work')}</h3>
-          <BiField label={t('कार्य का नाम', 'Work')} required value={form.name} onChange={(name) => change({ name })} placeholder={{ hi: 'जैसे: नई पानी की टंकी (वार्ड 4)', en: 'e.g. New water tank (Ward 4)' }} />
-          <div className="field">
-            <label>{t('प्रगति', 'Progress')}: <b style={{ color: progressColor(form.progress) }}>{form.progress}%</b></label>
-            <input type="range" min={0} max={100} step={5} value={form.progress} onChange={(e) => change({ progress: Number(e.target.value) })} />
-          </div>
-          <Field label={t('बजट', 'Budget')} icon="currency-inr" value={form.budget} placeholder="₹ 12 लाख" onChange={(e) => change({ budget: e.target.value })} />
-          <FormFooter
-            editing={!!editId} saving={save.isPending} disabled={!form.name.hi.trim()} color="var(--teal)"
-            saveLabel={t('कार्य जोड़ें', 'Add work')} error={save.isError ? errorText(save.error) : undefined} done={done} onCancel={reset}
-          />
-        </form>
-        <div className="stack">
-          <Loaded q={works}>
-            {(list) => list.length === 0 ? <div className="sub">{t('अभी कोई विकास कार्य नहीं', 'No development works yet')}</div> : list.map((w) => (
-              <div className="card" key={w.id} style={{ outline: w.id === editId ? '2px solid var(--teal)' : undefined }}>
-                <div className="row"><b className="grow" style={{ fontSize: 17 }}>{tl(w.name)}</b><b style={{ color: progressColor(w.progress) }}>{w.progress}%</b></div>
-                <div className="bar" style={{ margin: '6px 0' }}><div style={{ width: `${w.progress}%`, background: progressColor(w.progress) }} /></div>
-                {w.budget ? <div className="small sub">{t('बजट', 'Budget')}: {w.budget}</div> : null}
-                <ItemActions
-                  busy={remove.isPending} error={remove.isError && remove.variables === w.id ? errorText(remove.error) : undefined}
-                  onEdit={() => { setEditId(w.id); setForm({ name: w.name, progress: w.progress, budget: w.budget }); setDone(''); save.reset(); window.scrollTo(0, 0); }}
-                  onDelete={() => {
-                    if (!window.confirm(t(`“${tl(w.name)}” कार्य हटाएँ?`, `Remove the work “${tl(w.name)}”?`))) return;
-                    remove.mutate(w.id, { onSuccess: () => { if (w.id === editId) reset(); } });
-                  }}
-                />
-              </div>
-            ))}
           </Loaded>
         </div>
       </div>

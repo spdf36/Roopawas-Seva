@@ -5,18 +5,31 @@ implements the API contract in `../shared/api.ts`, which the website also uses; 
 `../shared`.
 
 **Status:** every endpoint in `../shared/api.ts` is implemented: auth and accounts (`/auth/*`,
-`/accounts/*`), requests and photos (`/requests/*`, `/photos/*`), content (`/notices`, `/schemes`,
-`/works`), the village figures (`/stats/*`) and the demo reset (`/demo/reset`, demo mode only). Next: the
-website switches from its mock to this server.
+`/accounts/*`), requests and photos (`/requests/*`, `/photos/*`), content (`/notices`, `/schemes`),
+village Yojnas (`/yojnas/*`, `/bills/*`), the village figures (`/stats/*`) and the demo reset (`/demo/reset`,
+demo mode only). The website uses it when `VITE_API_URL` is set.
 
 ## Content
 
-- Notices, schemes, development works and the public village figures are readable by anyone; only staff
+- Notices, schemes and the public village figures are readable by anyone; only staff
   change them. Input is checked by `../shared/validate.ts`, which the website's mock uses too.
 - A scheme citizens have applied for cannot be deleted (`409 in_use`) – close it instead; closed schemes
   are hidden from everyone but staff.
 - `POST /demo/reset` reloads the sample data, ends every session and deletes the photos the server saved.
   It only exists with `DEMO_MODE=true`; otherwise it is a 404.
+
+## Village Yojnas
+
+- Public to read (`GET /yojnas`, `GET /yojnas/:id`); staff create and change them. Each yojna is one
+  document holding its approval levels, funds with their instalments, and expenses.
+- Rules: approved levels must come first, in order; a fund never receives more than it was sanctioned, and
+  its sanctioned amount cannot drop below what was received; amounts are whole rupees; a fund with
+  instalments or expenses, and a yojna with funds or expenses, cannot be deleted (`409 in_use`).
+- Changes to one yojna run one after another in the server, and every save is checked against the version
+  it read (retrying on a conflict), so two staff saving at once never lose each other's changes.
+- Bill photos are checked like complaint photos and saved as `bill-<yojna>-<random>.jpg`. Unlike complaint
+  photos they are public, so `/bills/<file>` needs no signed link. Replacing or removing a bill, or deleting
+  its expense, deletes the file.
 
 ## Requests and photos
 
@@ -91,7 +104,8 @@ connection is refused.
 | `otps` | Pending registration codes (hashed), one per mobile number; deleted when used or expired. |
 | `requests` | Complaints and scheme applications, keyed by their request number (`RP-2026-00128`). Photos are files in `UPLOADS_DIR`; only the file name is stored. |
 | `counters` | The sequence request numbers are taken from. |
-| `notices`, `schemes`, `works`, `baselines` | Content managed by the Panchayat (schemes keyed by their short ID). |
+| `notices`, `schemes`, `baselines` | Content managed by the Panchayat (schemes keyed by their short ID). |
+| `yojnas` | Village Yojnas with their levels, funds, instalments and expenses. Bill photos are files in `UPLOADS_DIR`. |
 
 ## Errors
 
@@ -109,8 +123,8 @@ Every error is JSON `{ "code": "..." }` with a matching HTTP status, using the c
 | `src/db.ts` | MongoDB connection |
 | `src/models.ts` | Mongoose models (one per collection) |
 | `src/serialize.ts` | Turns documents into the shared API types – the only way data leaves the server |
-| `src/routes/` | The endpoints, one file per area (`auth`, `accounts`, `requests`, `content`, `stats`, `demo`) |
-| `src/photos.ts` | Checking and saving photos, signed photo links, and `GET /photos/:id` |
+| `src/routes/` | The endpoints, one file per area (`auth`, `accounts`, `requests`, `content`, `yojnas`, `stats`, `demo`) |
+| `src/photos.ts` | Checking and saving photos, signed photo links, `GET /photos/:id` and public bills (`GET /bills/:file`) |
 | `src/auth.ts` | Sessions: start, end, and `authenticate(req, roles)` for routes |
 | `src/otp.ts` | Registration codes, and where an SMS provider plugs in |
 | `src/rateLimit.ts` | Attempt counters for logins and OTPs |
