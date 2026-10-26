@@ -1,4 +1,4 @@
-import { Account, Baseline, Coords, DevelopmentWork, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status } from '../data';
+import { Account, ApprovalLevel, Baseline, Coords, Expense, Fund, Instalment, L, Notice, NoticeTag, Request, RequestFilter, Scheme, Status, Yojna } from './data';
 
 /** An account as the API returns it: the PIN never leaves the server. */
 export type User = Omit<Account, 'pin'>;
@@ -7,14 +7,23 @@ export type Session = { token: string; user: User };
 export type CitizenDetails = Pick<User, 'name' | 'mobile'> & Required<Pick<User, 'ageGroup' | 'ward' | 'occupation' | 'family'>>;
 export type ProfilePatch = Partial<Omit<CitizenDetails, 'mobile'>>;
 export type NewAdmin = Pick<Account, 'name' | 'loginId' | 'pin' | 'mobile'> & { designation: string };
-/** `photo` is a JPEG data: URL, compressed on the device (see src/photo.ts). */
+/** `photo` is a JPEG data: URL, compressed on the device (see web/src/photo.ts). */
 export type NewComplaint = { categoryId: string; description: string; location: string; coords?: Coords; photo?: string };
 export type StatusUpdate = { status: Status; note?: string; department?: string };
 /** Text in both languages; a blank English text falls back to the Hindi one on the server. */
 export type NewNotice = { tag: NoticeTag; title: L; body: L };
 export type SchemeInput = Omit<Scheme, 'id'>;
-export type WorkInput = Omit<DevelopmentWork, 'id'>;
+/** A yojna's own details; its money is recorded through the fund and expense endpoints. */
+export type YojnaInput = Pick<Yojna, 'name' | 'desc' | 'dept' | 'status' | 'statusNote' | 'progress'> & { levels: ApprovalLevel[] };
+export type FundInput = Omit<Fund, 'id' | 'instalments'>;
+export type InstalmentInput = Omit<Instalment, 'id'>;
+/** `bill`: a JPEG data: URL of the bill or receipt (compressed like complaint photos). On an update, leaving it
+ * out keeps the current bill and `null` removes it. */
+export type ExpenseInput = Omit<Expense, 'id' | 'bill'> & { bill?: string | null };
 export type AccountFilter = 'citizen' | 'staff';
+
+/** `demoMode`: sample data, demo logins, any-4-digit OTPs and the Reset demo button. */
+export type ServerInfo = { demoMode: boolean };
 
 export type RequestSort = 'newest' | 'oldest' | 'updated';
 
@@ -44,6 +53,9 @@ export type ErrorCode =
   | 'in_use' // cannot delete: other records still refer to it (e.g. a scheme with applications)
   | 'invalid' // the request body failed validation
   | 'too_large' // 413: the upload (e.g. a photo) is too big
+  | 'rate_limited' // 429: too many attempts (logins, OTPs); try again later
+  | 'server_error' // 500: something unexpected failed on the server
+  | 'unavailable' // 501: needs the real server (the website's offline mock does not have this feature)
   | 'network'; // the server could not be reached
 
 /** Largest photo the server accepts, as the length of its data: URL (about 525 KB of image). */
@@ -57,23 +69,27 @@ export class ApiError extends Error {
 
 /**
  * Everything the website needs from the server. The comment on each method is the REST route the
- * backend exposes; the session token travels as `Authorization: Bearer <token>`.
+ * backend exposes, with its JSON body where it has one; the session token travels as
+ * `Authorization: Bearer <token>`. Responses are the return type as JSON; a `void` method answers 204.
  * All rules (roles, ownership, status flow, validation) are enforced behind this interface,
  * never only in the UI.
  */
 export interface Api {
+  /** GET /info – public: how this server is set up (e.g. demo mode shows the demo logins and Reset demo) */
+  serverInfo(): Promise<ServerInfo>;
+
   // ---- Auth ----
-  /** POST /auth/login → 401 invalid_login, 403 inactive */
+  /** POST /auth/login { loginId, pin } → 401 invalid_login, 403 inactive, 429 rate_limited */
   login(loginId: string, pin: string): Promise<Session>;
   /** POST /auth/logout – must send the current token at call time; the caller clears its session straight after */
   logout(): Promise<void>;
-  /** POST /auth/otp – sends the registration OTP to a mobile number → 409 exists */
+  /** POST /auth/otp { mobile } – sends the registration OTP to a mobile number → 409 exists, 429 rate_limited */
   sendOtp(mobile: string): Promise<void>;
-  /** POST /auth/register – creates a citizen account and logs it in → 400 invalid (bad OTP), 409 exists */
+  /** POST /auth/register { details, otp, pin } – creates a citizen account and logs it in → 400 invalid (bad OTP), 409 exists */
   register(details: CitizenDetails, otp: string, pin: string): Promise<Session>;
   /** GET /auth/me */
   me(): Promise<User>;
-  /** PATCH /auth/me – citizens only */
+  /** PATCH /auth/me ProfilePatch – citizens only */
   updateProfile(patch: ProfilePatch): Promise<User>;
 
   // ---- Requests (complaints and scheme applications) ----
@@ -115,15 +131,33 @@ export interface Api {
   /** DELETE /schemes/:id – staff only → 409 in_use when citizens have applied (close it instead) */
   deleteScheme(id: string): Promise<void>;
 
-  // ---- Village development works ----
-  /** GET /works – public */
-  listWorks(): Promise<DevelopmentWork[]>;
-  /** POST /works – staff only */
-  createWork(w: WorkInput): Promise<DevelopmentWork>;
-  /** PUT /works/:id – staff only */
-  updateWork(id: string, w: WorkInput): Promise<DevelopmentWork>;
-  /** DELETE /works/:id – staff only */
-  deleteWork(id: string): Promise<void>;
+  // ---- Village Yojnas (public to read, staff to change; every change answers with the whole yojna) ----
+  /** GET /yojnas – public, oldest first */
+  listYojnas(): Promise<Yojna[]>;
+  /** GET /yojnas/:id – public */
+  getYojna(id: string): Promise<Yojna>;
+  /** POST /yojnas YojnaInput – staff only. Approved levels must come first, in order (400 invalid otherwise) */
+  createYojna(y: YojnaInput): Promise<Yojna>;
+  /** PUT /yojnas/:id YojnaInput – staff only */
+  updateYojna(id: string, y: YojnaInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id – staff only → 409 in_use while funds or expenses are recorded (remove those first) */
+  deleteYojna(id: string): Promise<void>;
+  /** POST /yojnas/:id/funds FundInput – staff only */
+  addFund(yojnaId: string, f: FundInput): Promise<Yojna>;
+  /** PUT /yojnas/:id/funds/:fundId FundInput – staff only; the sanctioned amount cannot go below what was received → 400 invalid */
+  updateFund(yojnaId: string, fundId: string, f: FundInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id/funds/:fundId – staff only → 409 in_use while it has instalments or expenses */
+  deleteFund(yojnaId: string, fundId: string): Promise<Yojna>;
+  /** POST /yojnas/:id/funds/:fundId/instalments InstalmentInput – staff only; never more than sanctioned in total → 400 invalid */
+  addInstalment(yojnaId: string, fundId: string, i: InstalmentInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id/funds/:fundId/instalments/:instalmentId – staff only */
+  deleteInstalment(yojnaId: string, fundId: string, instalmentId: string): Promise<Yojna>;
+  /** POST /yojnas/:id/expenses ExpenseInput – staff only → 413 too_large for a bill photo over MAX_PHOTO_BYTES */
+  addExpense(yojnaId: string, e: ExpenseInput): Promise<Yojna>;
+  /** PUT /yojnas/:id/expenses/:expenseId ExpenseInput – staff only */
+  updateExpense(yojnaId: string, expenseId: string, e: ExpenseInput): Promise<Yojna>;
+  /** DELETE /yojnas/:id/expenses/:expenseId – staff only */
+  deleteExpense(yojnaId: string, expenseId: string): Promise<Yojna>;
 
   // ---- Village dashboard ----
   /** GET /stats/village – public */
@@ -136,7 +170,7 @@ export interface Api {
   // ---- Accounts ----
   /** GET /accounts?role=citizen|staff – citizens: staff; staff accounts: super admin */
   listAccounts(filter: AccountFilter): Promise<User[]>;
-  /** POST /accounts – super admin only → 409 exists */
+  /** POST /accounts NewAdmin – super admin only → 409 exists */
   createAdmin(a: NewAdmin): Promise<User>;
   /** PATCH /accounts/:id { active } – admins manage citizens, the super admin also manages admins */
   setAccountActive(id: string, active: boolean): Promise<User>;

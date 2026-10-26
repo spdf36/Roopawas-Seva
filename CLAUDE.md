@@ -18,17 +18,41 @@ the changed files, a `git commit` with a suggested message, and `git push`. The 
 | Folder | What | Stack |
 | --- | --- | --- |
 | `web/` | Website | React 19, Vite, React Router, TanStack Query, Zustand |
+| `server/` | Backend API (being built) | Express 5, TypeScript run with `tsx`, MongoDB Atlas (Mongoose) |
+| `shared/` | Types, catalogue, business rules, API contract and sample data used by web and server | Plain TypeScript, no dependencies |
 | `app/` | Mobile app (Android APK) | Expo SDK 57, React Native, Expo Router, Zustand (AsyncStorage) |
 | `docs/` | Concept board, walkthrough video, screenshots | |
 
-**Plan:** finish the website → build the backend → rebuild the app on top of the backend.
+**Plan:** finish the website → build the backend → connect the website to it (stage 6) → village Yojnas
+(below, done) → rebuild the app on top of the backend. No live deployment until all of that works locally.
+
+**Village Yojnas** (replaced "Development works"): funds by source (central / state / …)
+with sanctioned amount and instalments received; expenses (date, purpose, amount, category, optional bill
+photo); status Proposed / Processing / On hold / Active / Completed; per-yojna approval levels defined by
+staff (e.g. Panchayat → Samiti → District → State → Central) with the current level shown while
+Processing or On hold. Everyone, including visitors, can view it (bills too); staff change it. Code:
+`shared/data.ts` (types, `yojnaTotals`, `currentLevel`), `server/src/routes/yojnas.ts`, `web/src/pages/Yojnas.tsx`
+(public) and `AdminYojnas.tsx`. New features like this are built for the real server only: the website's mock
+answers them with `501 unavailable` and keeps the older features working offline.
 The backend will be **MERN with TypeScript**: Express + MongoDB Atlas (Mongoose), run with `tsx`. The
-Atlas connection string goes in the server's `.env` (never committed).
+Atlas connection string goes in the server's `.env` (never committed). Decisions:
+- Code in `server/` in this repo; types and rules used by both website and server live in `shared/`.
+- Logins: random session tokens stored in MongoDB (expire after 30 days; logout/deactivation end them
+  at once). PINs are stored hashed (bcrypt), never in plain text.
+- Photos: image files on the server's own disk (an uploads folder), with only the path in MongoDB. No
+  external storage (S3/R2) for now, so the host needs a persistent disk.
+- Demo data: `npm run seed` loads the sample data; demo logins and the reset endpoint only work with
+  `DEMO_MODE=true`. A real deployment creates just the super admin from `.env`.
+
+**Shared code:** `shared/data.ts` (types, catalogue, rules such as `nextStatuses`), `shared/api.ts` (the
+`Api` interface: every endpoint with its REST route and error codes), `shared/validate.ts` (input checks
+for content, used by server and mock), `shared/seed.ts` (sample data), `shared/colors.ts`. Both web and server import them as `@shared/...`. Keep `shared/` free of browser-
+and Node-specific code, and of dependencies.
 
 **Website data flow:** pages → hooks in `web/src/api/hooks.ts` (TanStack Query) → the `Api` interface in
-`web/src/api/types.ts`. Until the backend exists, `web/src/api/mock.ts` implements that interface in the
-browser (localStorage). `types.ts` is the contract the backend must implement: each method lists its REST
-route and error codes. `web/src/store.ts` only holds the language and the session (token + user).
+`shared/api.ts`. Until the backend is connected, `web/src/api/mock.ts` implements that interface in the
+browser (localStorage); the server implements the same contract. `web/src/store.ts` only holds the
+language and the session (token + user).
 
 The mobile app still has the old all-in-the-store model and is frozen until it is rebuilt on the backend;
 don't port website changes to it.
@@ -36,10 +60,16 @@ don't port website changes to it.
 ## Commands
 
 ```bash
-# Website
+# Website (web/.env VITE_API_URL=http://localhost:4000 uses the server; empty = in-browser mock)
 cd web && npm install
 npm run dev          # http://localhost:5173
 npm run build        # typecheck + production build
+
+# Backend (needs server/.env – copy server/.env.example)
+cd server && npm install
+npm run seed         # demo sample data (DEMO_MODE=true); `npm run setup` for a real database
+npm run dev          # http://localhost:4000, restarts on changes
+npm run typecheck
 
 # Mobile app
 cd app && npm install
@@ -47,18 +77,18 @@ npm start            # Expo dev server
 npm run typecheck
 ```
 
-Before calling a task done, run `npm run build` in `web/` and `npm run typecheck` in `app/` for whichever
-side changed. For app work, also follow `app/AGENTS.md` (Expo-specific rules, e.g. `npx expo install`).
+Before calling a task done, run `npm run build` in `web/`, `npm run typecheck` in `server/` and
+`npm run typecheck` in `app/` for whichever side changed (a change in `shared/` affects web and server). For app work, also follow `app/AGENTS.md` (Expo-specific rules, e.g. `npx expo install`).
 
 ## Rules
 
 - **Bilingual:** every user-facing string is Hindi + English. Use `t('हिंदी', 'English')` inline and
   `{ hi, en }` objects (`L`) in data. Hindi is the default language.
 - **Rules live behind the API:** permissions, ownership, validation and the status flow are enforced in
-  the API implementation (`mock.ts` now, the backend later), never only in the UI. The API never returns
-  PINs. When adding a feature, add the method to `types.ts` (with its route), implement it in `mock.ts`,
-  and add a hook in `hooks.ts`; pages never call `api` directly.
+  the API implementation (`mock.ts` and the server), never only in the UI. The API never returns PINs.
+  When adding a feature, add the method to `shared/api.ts` (with its route), implement it in the server
+  and in `mock.ts`, and add a hook in `hooks.ts`; pages never call `api` directly.
 - **Loading and errors:** render query data through `<Loaded q={…}>` and show mutation errors with
   `useErrorText()` (both in `web/src/components/ui.tsx`).
-- **Request status** only moves forward along `FLOW` (or to `rejected`); see `nextStatuses` in `data.ts`.
+- **Request status** only moves forward along `FLOW` (or to `rejected`); see `nextStatuses` in `shared/data.ts`.
 - Match the surrounding code style: function components, small helpers, short comments that explain why.

@@ -1,9 +1,9 @@
+import { AGE_GROUPS, Icon as IconName, L, OCCUPATIONS, WARDS } from '@shared/data';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLogout, useUpdateProfile } from '../api/hooks';
 import { CitizenFields, CitizenForm, useValidateCitizen } from '../components/CitizenFields';
 import { Icon, PageHead, tint, useErrorText } from '../components/ui';
-import { AGE_GROUPS, Icon as IconName, L, OCCUPATIONS, WARDS } from '../data';
 import { useT, useUser } from '../store';
 
 export function Profile() {

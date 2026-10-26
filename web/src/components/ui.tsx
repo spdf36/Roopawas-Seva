@@ -1,10 +1,10 @@
+import {
+  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, mapLink, requestVisual, statusLabel,
+} from '@shared/data';
 import { UseQueryResult } from '@tanstack/react-query';
 import { CSSProperties, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { Link } from 'react-router-dom';
 import { ApiError } from '../api';
-import {
-  DEPARTMENTS, FLOW, FLOW_HINT, Icon as IconName, L, Request, STATUS, Visual, fmtDate, mapLink, requestVisual, statusLabel,
-} from '../data';
 import { useStore, useT } from '../store';
 
 export function Icon({ name, size = 20, color, style, spin }: { name: IconName; size?: number; color?: string; style?: CSSProperties; spin?: boolean }) {
@@ -23,9 +23,12 @@ export function useErrorText() {
       case 'forbidden': return t('आपको यह करने की अनुमति नहीं है।', 'You are not allowed to do this.');
       case 'not_found': return t('यह जानकारी नहीं मिली।', 'This could not be found.');
       case 'exists': return t('यह पहले से मौजूद है।', 'This already exists.');
-      case 'in_use': return t('इसे हटाया नहीं जा सकता क्योंकि इससे जुड़े आवेदन मौजूद हैं।', 'This cannot be deleted because applications refer to it.');
+      case 'in_use': return t('इसे हटाया नहीं जा सकता क्योंकि इससे जुड़े रिकॉर्ड (जैसे आवेदन) मौजूद हैं।', 'This cannot be deleted because other records (such as applications) refer to it.');
       case 'invalid': return t('जानकारी सही नहीं है। कृपया जाँचकर फिर से भेजें।', 'Some details are not valid. Please check and try again.');
       case 'too_large': return t('फोटो बहुत बड़ी है या जगह भर गई है। कृपया छोटी फोटो चुनें या फोटो हटाकर भेजें।', 'The photo is too large, or storage is full. Choose a smaller photo or send without one.');
+      case 'rate_limited': return t('बहुत अधिक प्रयास हुए। कृपया 15 मिनट बाद फिर से प्रयास करें।', 'Too many attempts. Please try again in 15 minutes.');
+      case 'unavailable': return t('यह सुविधा सर्वर से जुड़ने पर ही उपलब्ध है (web/.env में VITE_API_URL)।', 'This feature needs the server (VITE_API_URL in web/.env).');
+      case 'server_error': return t('सर्वर पर कुछ गलत हो गया। कृपया थोड़ी देर बाद फिर से प्रयास करें।', 'Something went wrong on the server. Please try again in a little while.');
       default: return t('सर्वर से संपर्क नहीं हो सका। कृपया फिर से प्रयास करें।', 'Could not reach the server. Please try again.');
     }
   };
@@ -46,11 +49,13 @@ export function ErrorBox({ error, retry, notFound }: { error: unknown; retry?: (
   const { t } = useT();
   const errorText = useErrorText();
   const missing = error instanceof ApiError && error.code === 'not_found';
+  // Trying again cannot help when the feature does not exist offline.
+  const offline = error instanceof ApiError && error.code === 'unavailable';
   return (
     <div className="card center sub stack" style={{ padding: 32, alignItems: 'center' }} role="alert">
       <Icon name={missing ? 'file-question-outline' : 'alert-circle-outline'} size={44} color={missing ? 'var(--faint)' : 'var(--red)'} />
       <p>{missing && notFound ? notFound : errorText(error)}</p>
-      {retry && !missing ? <button type="button" className="btn sm outline" onClick={retry}><Icon name="refresh" size={17} />{t('फिर से प्रयास करें', 'Try again')}</button> : null}
+      {retry && !missing && !offline ? <button type="button" className="btn sm outline" onClick={retry}><Icon name="refresh" size={17} />{t('फिर से प्रयास करें', 'Try again')}</button> : null}
     </div>
   );
 }

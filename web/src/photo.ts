@@ -1,4 +1,4 @@
-import { MAX_PHOTO_BYTES } from './api/types';
+import { MAX_PHOTO_BYTES } from '@shared/api';
 
 /** Longest side of an uploaded photo, in pixels: enough to see the problem, small enough for village networks. */
 const MAX_SIDE = 1280;

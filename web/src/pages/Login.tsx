@@ -1,9 +1,10 @@
+import { Icon as IconName, Role, ROLE_NAME } from '@shared/data';
+import { DEMO_LOGINS } from '@shared/seed';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useLogin } from '../api/hooks';
+import { useLogin, useServerInfo } from '../api/hooks';
 import { Logo } from '../components/Art';
 import { Field, Icon, tint, useErrorText } from '../components/ui';
-import { DEMO_LOGINS, Icon as IconName, Role, ROLE_NAME } from '../data';
 import { useT } from '../store';
 
 const ROLE_ICON: Record<Role, IconName> = { citizen: 'account', admin: 'account-tie', superadmin: 'shield-crown' };
@@ -11,6 +12,7 @@ const ROLE_ICON: Record<Role, IconName> = { citizen: 'account', admin: 'account-
 export function Login() {
   const { t, tl } = useT();
   const login = useLogin();
+  const info = useServerInfo();
   const errorText = useErrorText();
   const [loginId, setLoginId] = useState('');
   const [pin, setPin] = useState('');
@@ -43,20 +45,23 @@ export function Login() {
           {t('नए नागरिक हैं?', 'New citizen?')} <Link to="/register" style={{ color: 'var(--green)', fontWeight: 700 }}>{t('पंजीकरण करें', 'Register')}</Link>
         </p>
       </form>
-      <div className="card stack" style={{ marginTop: 14, gap: 4, background: 'var(--amber-soft)', borderColor: '#f0d9a0', color: 'var(--amber)' }}>
-        <b className="small">{t('डेमो लॉगिन (भरने के लिए क्लिक करें)', 'Demo logins (click to fill)')}</b>
-        {DEMO_LOGINS.map((d) => (
-          <button
-            key={d.role} type="button" className="row small"
-            style={{ background: 'none', border: 0, padding: '4px 0', color: 'inherit', textAlign: 'left' }}
-            onClick={() => { setLoginId(d.loginId); setPin(d.pin); edit(); }}
-          >
-            <Icon name={ROLE_ICON[d.role]} size={18} />
-            <b style={{ width: 100 }}>{tl(ROLE_NAME[d.role])}</b>
-            <span>{d.loginId}  /  {d.pin}</span>
-          </button>
-        ))}
-      </div>
+      {/* Only a demo server has these accounts. */}
+      {info.data?.demoMode ? (
+        <div className="card stack" style={{ marginTop: 14, gap: 4, background: 'var(--amber-soft)', borderColor: '#f0d9a0', color: 'var(--amber)' }}>
+          <b className="small">{t('डेमो लॉगिन (भरने के लिए क्लिक करें)', 'Demo logins (click to fill)')}</b>
+          {DEMO_LOGINS.map((d) => (
+            <button
+              key={d.role} type="button" className="row small"
+              style={{ background: 'none', border: 0, padding: '4px 0', color: 'inherit', textAlign: 'left' }}
+              onClick={() => { setLoginId(d.loginId); setPin(d.pin); edit(); }}
+            >
+              <Icon name={ROLE_ICON[d.role]} size={18} />
+              <b style={{ width: 100 }}>{tl(ROLE_NAME[d.role])}</b>
+              <span>{d.loginId}  /  {d.pin}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

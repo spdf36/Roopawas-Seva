@@ -1,9 +1,12 @@
+import { Api, ApiError, MAX_PHOTO_BYTES, User } from '@shared/api';
 import {
-  Account, BASELINE_FIELDS, Baseline, CATEGORIES, DEPARTMENTS, DevelopmentWork, FIRST_NEW_SEQ, L, NOTICE_TAGS, Notice, Request, Role,
-  SCHEME_GROUPS, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES, SEED_WORKS, Scheme, TAG_VISUAL, isStaff,
-  Coords, REOPEN_STATUS, canReopen, matchesFilter, nextStatuses, updatedAt,
-} from '../data';
-import { Api, ApiError, MAX_PHOTO_BYTES, NewNotice, SchemeInput, User, WorkInput } from './types';
+  Account, Baseline, CATEGORIES, Coords, Notice, REOPEN_STATUS, Request, Role, Scheme, TAG_VISUAL, canReopen, isMobile,
+  isPin, isStaff, isStaffLoginId, matchesFilter, nextStatuses, normaliseLoginId, updatedAt,
+} from '@shared/data';
+import {
+  FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES,
+} from '@shared/seed';
+import { cleanBaseline, cleanNotice, cleanScheme, isDepartment } from '@shared/validate';
 
 /**
  * A stand-in for the backend that runs in the browser and keeps its "database" in localStorage.
@@ -20,7 +23,6 @@ type Db = {
   requests: Request[];
   notices: Notice[];
   schemes: Scheme[];
-  works: DevelopmentWork[];
   baseline: Baseline;
   seq: number;
   /** Session token → account ID. */
@@ -28,7 +30,7 @@ type Db = {
 };
 
 const seed = (): Db => structuredClone({
-  accounts: SEED_ACCOUNTS, requests: SEED_REQUESTS, notices: SEED_NOTICES, schemes: SEED_SCHEMES, works: SEED_WORKS, baseline: SEED_BASELINE,
+  accounts: SEED_ACCOUNTS, requests: SEED_REQUESTS, notices: SEED_NOTICES, schemes: SEED_SCHEMES, baseline: SEED_BASELINE,
   seq: FIRST_NEW_SEQ, sessions: {},
 });
 
@@ -64,12 +66,6 @@ const fail = (status: number, code: ApiError['code']): never => {
 };
 
 const toUser = ({ pin: _pin, ...user }: Account): User => user;
-const normaliseLoginId = (v: string) => v.replace(/\s+/g, '').toLowerCase();
-const isMobile = (v: string) => /^[6-9]\d{9}$/.test(v);
-const isPin = (v: string) => /^\d{4}$/.test(v);
-const filled = (v: L) => !!v.hi.trim();
-/** Trims bilingual text; a blank English text falls back to the Hindi one. */
-const bilingual = (v: L): L => ({ hi: v.hi.trim(), en: v.en.trim() || v.hi.trim() });
 const isOpen = (r: Request) => r.status !== 'resolved' && r.status !== 'rejected';
 const newToken = () => crypto.randomUUID();
 const newId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
@@ -88,31 +84,6 @@ function cleanPhoto(photo: string | undefined): string | undefined {
   return photo;
 }
 
-function cleanNotice({ tag, title, body }: NewNotice): Pick<Notice, 'tag' | 'title' | 'body'> {
-  if (!NOTICE_TAGS.some((x) => x.id === tag) || !filled(title) || !filled(body)) return fail(400, 'invalid');
-  return { tag, title: bilingual(title), body: bilingual(body) };
-}
-
-function cleanScheme({ groupId, name, desc, dept, open }: SchemeInput): SchemeInput {
-  if (!SCHEME_GROUPS.some((g) => g.id === groupId) || !DEPARTMENTS[dept] || !filled(name) || !filled(desc)) return fail(400, 'invalid');
-  return { groupId, dept, open: !!open, name: bilingual(name), desc: bilingual(desc) };
-}
-
-function cleanWork({ name, progress, budget }: WorkInput): WorkInput {
-  if (!filled(name) || !Number.isInteger(progress) || progress < 0 || progress > 100) return fail(400, 'invalid');
-  return { name: bilingual(name), progress, budget: budget.trim() };
-}
-
-function cleanBaseline(b: Baseline): Baseline {
-  const out = {} as Baseline;
-  for (const { id } of BASELINE_FIELDS) {
-    const n = b[id];
-    if (!Number.isInteger(n) || n < 0) return fail(400, 'invalid');
-    out[id] = n;
-  }
-  return out;
-}
-
 function find<T extends { id: string }>(list: T[], id: string): T {
   return list.find((x) => x.id === id) ?? fail(404, 'not_found');
 }
@@ -127,6 +98,9 @@ export function createMockApi(getToken: () => string | null): Api {
     // Callers get copies, as they would from a real server.
     return result === undefined ? result : structuredClone(result);
   }
+
+  /** For features that only the real server has. */
+  const unavailable = (): Promise<never> => call(() => fail(501, 'unavailable'));
 
   /** The logged-in, active account, if any (for endpoints that guests may also call). */
   function currentUser(db: Db): Account | undefined {
@@ -178,6 +152,9 @@ export function createMockApi(getToken: () => string | null): Api {
   const mobileTaken = (db: Db, mobile: string) => db.accounts.some((a) => a.mobile === mobile || normaliseLoginId(a.loginId) === mobile);
 
   return {
+    // The mock is always a demo: sample data, demo logins, any OTP.
+    serverInfo: () => call(() => ({ demoMode: true })),
+
     login: (loginId, pin) =>
       call((db) => {
         const key = normaliseLoginId(loginId);
@@ -278,7 +255,7 @@ export function createMockApi(getToken: () => string | null): Api {
         const user = auth(db, ['admin', 'superadmin']);
         const r = findRequest(db, id, user);
         if (!nextStatuses(r.status).includes(status)) return fail(400, 'invalid');
-        if (department !== undefined && !DEPARTMENTS[department]) return fail(400, 'invalid');
+        if (department !== undefined && !isDepartment(department)) return fail(400, 'invalid');
         r.status = status;
         r.department = department ?? r.department;
         r.confirmed = status === 'resolved' ? r.confirmed : false;
@@ -363,28 +340,20 @@ export function createMockApi(getToken: () => string | null): Api {
         db.schemes = db.schemes.filter((s) => s.id !== id);
       }),
 
-    listWorks: () => call((db) => db.works),
-
-    createWork: (w) =>
-      call((db) => {
-        auth(db, ['admin', 'superadmin']);
-        const work: DevelopmentWork = { id: newId('w'), ...cleanWork(w) };
-        db.works.push(work);
-        return work;
-      }),
-
-    updateWork: (id, w) =>
-      call((db) => {
-        auth(db, ['admin', 'superadmin']);
-        return Object.assign(find(db.works, id), cleanWork(w));
-      }),
-
-    deleteWork: (id) =>
-      call((db) => {
-        auth(db, ['admin', 'superadmin']);
-        find(db.works, id);
-        db.works = db.works.filter((w) => w.id !== id);
-      }),
+    // Village Yojnas were built for the real server only (see CLAUDE.md); offline, the pages say so.
+    listYojnas: unavailable,
+    getYojna: unavailable,
+    createYojna: unavailable,
+    updateYojna: unavailable,
+    deleteYojna: unavailable,
+    addFund: unavailable,
+    updateFund: unavailable,
+    deleteFund: unavailable,
+    addInstalment: unavailable,
+    deleteInstalment: unavailable,
+    addExpense: unavailable,
+    updateExpense: unavailable,
+    deleteExpense: unavailable,
 
     getBaseline: () =>
       call((db) => {
@@ -427,7 +396,7 @@ export function createMockApi(getToken: () => string | null): Api {
       call((db) => {
         auth(db, ['superadmin']);
         const key = normaliseLoginId(loginId);
-        if (!name.trim() || !designation || !/^[a-z][a-z0-9._-]{2,19}$/.test(key) || !isMobile(mobile) || !isPin(pin)) return fail(400, 'invalid');
+        if (!name.trim() || !designation || !isStaffLoginId(key) || !isMobile(mobile) || !isPin(pin)) return fail(400, 'invalid');
         if (db.accounts.some((a) => normaliseLoginId(a.loginId) === key)) return fail(409, 'exists');
         const acc: Account = { id: `u-${Date.now()}`, role: 'admin', name: name.trim(), loginId: key, pin, mobile, designation, active: true, createdAt: Date.now() };
         db.accounts.push(acc);

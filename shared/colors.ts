@@ -1,4 +1,5 @@
-// Colours sampled from the Roopawas Seva concept board.
+// Colours sampled from the Roopawas Seva concept board. Categories, statuses and notices carry these,
+// so they live with the shared data; the website's CSS variables use the same values.
 export const C = {
   navy: '#0B3C8C',
   blue: '#1E6FD9',
@@ -22,13 +23,3 @@ export const C = {
   sub: '#65738B',
   faint: '#9AA6B8',
 };
-
-export const F = {
-  r: 'Mukta_400Regular',
-  m: 'Mukta_500Medium',
-  sb: 'Mukta_600SemiBold',
-  b: 'Mukta_700Bold',
-  xb: 'Mukta_800ExtraBold',
-} as const;
-
-export const WIDE = 900;

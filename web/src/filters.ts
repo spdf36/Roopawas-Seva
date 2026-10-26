@@ -1,4 +1,4 @@
-import { RequestFilter } from './data';
+import { RequestFilter } from '@shared/data';
 import { useT } from './store';
 
 export const useFilterOptions = (): { id: RequestFilter; label: string }[] => {

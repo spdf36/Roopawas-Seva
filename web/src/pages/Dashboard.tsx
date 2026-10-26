@@ -1,12 +1,14 @@
-import { useVillageStats, useWorks } from '../api/hooks';
+import { Icon as IconName } from '@shared/data';
+import { Link } from 'react-router-dom';
+import { useVillageStats, useYojnas } from '../api/hooks';
 import { Icon, Loaded, PageHead } from '../components/ui';
-import { Icon as IconName } from '../data';
 import { useT } from '../store';
+import { YojnaCard, YojnaTotals } from './Yojnas';
 
 export function Dashboard() {
-  const { t, tl } = useT();
+  const { t } = useT();
   const stats = useVillageStats();
-  const works = useWorks();
+  const yojnas = useYojnas();
 
   const total = (label: string, value: number, color: string) => (
     <div><div className="small sub">{label}</div><b style={{ fontSize: 24, color }}>{value}</b></div>
@@ -64,20 +66,18 @@ export function Dashboard() {
         }}
       </Loaded>
 
-      <h2 className="section-title" style={{ marginTop: 28 }}>{t('विकास कार्य', 'Development Works')}</h2>
-      <Loaded q={works}>
-        {(list) => list.length === 0 ? <p className="sub">{t('अभी कोई विकास कार्य नहीं', 'No development works yet')}</p> : (
-          <div className="grid g2 collapse">
-            {list.map((w) => {
-              const color = w.progress >= 80 ? 'var(--green)' : 'var(--amber)';
-              return (
-                <div className="card" key={w.id}>
-                  <div className="row"><b className="grow">{tl(w.name)}</b><b style={{ color }}>{w.progress}%</b></div>
-                  <div className="bar" style={{ margin: '6px 0' }}><div style={{ width: `${w.progress}%`, background: color }} /></div>
-                  {w.budget ? <div className="small sub">{t('बजट', 'Budget')}: {w.budget}</div> : null}
-                </div>
-              );
-            })}
+      <div className="row wrap" style={{ marginTop: 28, marginBottom: 16 }}>
+        <h2 className="section-title grow" style={{ margin: 0 }}>{t('ग्राम विकास योजनाएँ', 'Village Yojnas')}</h2>
+        <Link to="/yojnas" className="row small" style={{ gap: 4, color: 'var(--blue)', fontWeight: 600 }}>{t('सभी योजनाएँ देखें', 'See all yojnas')}<Icon name="arrow-right" size={18} /></Link>
+      </div>
+      <Loaded q={yojnas}>
+        {(list) => list.length === 0 ? <p className="sub">{t('अभी कोई योजना दर्ज नहीं', 'No yojnas yet')}</p> : (
+          <div className="stack" style={{ gap: 16 }}>
+            <YojnaTotals list={list} />
+            {/* The most recently changed ones; the Yojnas page has them all. */}
+            <div className="grid g2 collapse">
+              {[...list].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4).map((y) => <YojnaCard key={y.id} y={y} to={`/yojnas/${y.id}`} />)}
+            </div>
           </div>
         )}
       </Loaded>

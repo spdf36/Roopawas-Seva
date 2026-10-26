@@ -1,10 +1,10 @@
+import { C } from '@shared/colors';
+import { FLOW, Icon as IconName, L, STATUS, fmtDate, isStaff, l } from '@shared/data';
 import { Link } from 'react-router-dom';
 import { useNotices, useVillageStats } from '../api/hooks';
 import { Banner } from '../components/Art';
 import { Icon, Loaded, tint } from '../components/ui';
-import { FLOW, Icon as IconName, L, STATUS, fmtDate, isStaff, l } from '../data';
 import { useT, useUser } from '../store';
-import { C } from '../theme';
 
 const TILES: { to: string; icon: IconName; color: string; hi: string; en: string }[] = [
   { to: '/profile', icon: 'account', color: C.green, hi: 'मेरी जानकारी', en: 'My Profile' },

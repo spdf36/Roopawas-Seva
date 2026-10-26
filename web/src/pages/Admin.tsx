@@ -1,3 +1,7 @@
+import {
+  CATEGORIES, DAY, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, OVERDUE_DAYS, ROLE_NAME, Request, RequestFilter, STATUS, Status,
+  WARDS, daysOpen, fmtDate, isClosed, nextStatuses,
+} from '@shared/data';
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ApiError, NewAdmin, RequestQuery, RequestSort } from '../api';
@@ -7,10 +11,6 @@ import {
 import {
   Badge, Chips, Empty, Field, Icon, Loaded, PageHead, ReopenedBadge, RequestSummary, Select, StatusBadge, TextArea, Timeline, tint, useErrorText,
 } from '../components/ui';
-import {
-  CATEGORIES, DEPARTMENTS, DESIGNATIONS, FLOW, Icon as IconName, L, OCCUPATIONS, OVERDUE_DAYS, ROLE_NAME, Request, RequestFilter, SEED_ACCOUNTS,
-  STATUS, Status, WARDS, daysOpen, fmtDate, isClosed, nextStatuses,
-} from '../data';
 import { useFilterOptions } from '../filters';
 import { useT, useUser } from '../store';
 
@@ -35,7 +35,7 @@ export function AdminLayout() {
     { to: '/admin/users', icon: 'account-outline', label: t('उपयोगकर्ता प्रबंधन', 'User management') },
     { to: '/admin/notices', icon: 'bell-outline', label: t('सूचनाएँ / नोटिफिकेशन', 'Notices / Notifications') },
     { to: '/admin/schemes', icon: 'bank-outline', label: t('योजना प्रबंधन', 'Scheme management') },
-    { to: '/admin/plan', icon: 'target', label: t('ग्राम विकास योजना', 'Village development plan') },
+    { to: '/admin/yojnas', icon: 'hammer-wrench', label: t('ग्राम विकास योजनाएँ', 'Village Yojnas') },
     { to: '/admin/figures', icon: 'counter', label: t('गाँव के आँकड़े', 'Village figures') },
   ];
 
@@ -406,7 +406,8 @@ function Reports({ requests, resolved, total }: { requests: Request[]; resolved:
   );
 }
 
-const SEEDED = new Set(SEED_ACCOUNTS.map((a) => a.id));
+/** Citizens who registered in the last 7 days get a "New" badge. */
+const isNew = (createdAt: number) => Date.now() - createdAt < 7 * DAY;
 
 export function AdminUsers() {
   const { t, tl } = useT();
@@ -434,7 +435,7 @@ export function AdminUsers() {
                   <tr key={u.id} style={u.active ? undefined : { opacity: 0.6 }}>
                     <td>
                       <b>{u.name}</b>{' '}
-                      {SEEDED.has(u.id) ? null : <Badge label={t('नया', 'New')} color="var(--green)" soft="var(--green-soft)" />}{' '}
+                      {!isNew(u.createdAt) ? null : <Badge label={t('नया', 'New')} color="var(--green)" soft="var(--green-soft)" />}{' '}
                       {u.active ? null : <Badge label={t('निष्क्रिय', 'Inactive')} color="var(--red)" soft="#fde5e8" />}
                     </td>
                     <td>+91 {u.mobile}</td>

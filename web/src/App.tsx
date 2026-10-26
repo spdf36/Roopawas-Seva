@@ -1,10 +1,11 @@
+import { Role, isStaff } from '@shared/data';
 import { ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { Role, isStaff } from './data';
 import { About } from './pages/About';
 import { AdminAdmins, AdminHome, AdminLayout, AdminReports, AdminRequest, AdminRequests, AdminUsers } from './pages/Admin';
-import { AdminFigures, AdminNotices, AdminPlan, AdminSchemes } from './pages/AdminContent';
+import { AdminFigures, AdminNotices, AdminSchemes } from './pages/AdminContent';
+import { AdminYojna, AdminYojnas } from './pages/AdminYojnas';
 import { Complaint } from './pages/Complaint';
 import { Dashboard } from './pages/Dashboard';
 import { Home } from './pages/Home';
@@ -14,6 +15,7 @@ import { Register } from './pages/Register';
 import { RequestPage, Requests } from './pages/Requests';
 import { Schemes } from './pages/Schemes';
 import { Updates } from './pages/Updates';
+import { YojnaPage, Yojnas } from './pages/Yojnas';
 import { useUser } from './store';
 
 /** Sends guests to the login page (and back afterwards), and other roles to their own home. */
@@ -45,6 +47,8 @@ export default function App() {
         <Route path="schemes" element={<Schemes />} />
         <Route path="updates" element={<Updates />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="yojnas" element={<Yojnas />} />
+        <Route path="yojnas/:id" element={<YojnaPage />} />
         <Route path="about" element={<About />} />
         <Route path="login" element={<GuestOnly><Login /></GuestOnly>} />
         <Route path="register" element={<GuestOnly><Register /></GuestOnly>} />
@@ -57,7 +61,10 @@ export default function App() {
           <Route path="requests" element={<AdminRequests />} />
           <Route path="requests/:id" element={<AdminRequest />} />
           <Route path="reports" element={<AdminReports />} />
-          <Route path="plan" element={<AdminPlan />} />
+          <Route path="yojnas" element={<AdminYojnas />} />
+          <Route path="yojnas/:id" element={<AdminYojna />} />
+          {/* The old address of the development works page. */}
+          <Route path="plan" element={<Navigate to="/admin/yojnas" replace />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="notices" element={<AdminNotices />} />
           <Route path="schemes" element={<AdminSchemes />} />

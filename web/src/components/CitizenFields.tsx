@@ -1,5 +1,5 @@
+import { AGE_GROUPS, L, OCCUPATIONS, WARDS } from '@shared/data';
 import { CitizenDetails } from '../api';
-import { AGE_GROUPS, L, OCCUPATIONS, WARDS } from '../data';
 import { useT } from '../store';
 import { Field, Select } from './ui';
 

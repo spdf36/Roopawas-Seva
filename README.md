@@ -56,7 +56,11 @@ were added, so it shows the earlier separate admin login)
   Submitted → Received → Under Review → Forwarded → Action Taken → Resolved, then confirm the resolution,
   or reopen it with a reason within 30 days if the problem is not actually fixed
 - Latest notices from the government and the Panchayat, with their dates
-- Public village dashboard (roads, water, street lights, schemes, total requests, development works)
+- Public village dashboard (roads, water, street lights, schemes, total requests, village Yojnas)
+- **Village Yojnas**, open to everyone: each development yojna's status (Proposed, Processing, On hold,
+  Active, Completed), which approval level it is waiting on (e.g. Panchayat Samiti → District → State),
+  the money sanctioned by each source (central, state, district, MP/MLA fund…), the instalments received,
+  and every expense with its category and a photo of the bill
 - Help page: how to use the service and frequently asked questions
 
 **Sarpanch / admin**
@@ -67,15 +71,24 @@ were added, so it shows the earlier separate admin login)
 - Department-wise report and analytics
 - Citizen accounts
 - Manage the content citizens see: publish, edit and remove notices; add, edit, close and remove
-  schemes (a scheme with applications can only be closed); development works and their progress;
-  and the recorded figures behind the public dashboard
+  schemes (a scheme with applications can only be closed); and the recorded figures behind the public dashboard
+- Village Yojnas: create a yojna and set its approval levels, keep its status and progress current, record
+  funds, instalments (never more than sanctioned) and expenses with bill photos. Needs the backend; the
+  website's offline mock does not have it
 
 ## Quick start
 
 Requires Node.js 20.19 or newer (22 LTS recommended).
 
 ```bash
-# Website – http://localhost:5173
+# Backend – http://localhost:4000 (copy server/.env.example to server/.env and fill it in first)
+cd server
+npm install
+npm run seed             # demo data (DEMO_MODE=true); or `npm run setup` for a real database
+npm run dev
+
+# Website – http://localhost:5173 (copy web/.env.example to web/.env so it uses the backend;
+# without it the website runs on a built-in mock with sample data in the browser)
 cd web
 npm install
 npm run dev
@@ -130,22 +143,21 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 
 ## Current limitations
 
-- **No backend yet.** All data is sample data stored on the device (AsyncStorage in the app,
-  localStorage on the website). The app and website do not share data, and each phone or browser
-  has its own copy.
-- **Logins are for demonstration only.** OTP is simulated, and accounts and PINs are stored in plain
-  text on the device. Real authentication needs the backend.
+- **Not deployed yet.** The website and the backend (`server/`, Express + MongoDB Atlas) work together
+  locally. The mobile app still keeps its own sample data on the phone until it is rebuilt on the backend.
+- **No SMS provider yet.** Outside demo mode, registration OTPs are written to the server log.
+- **The website's mock and the mobile app** (until it is rebuilt) keep accounts and PINs in plain text on
+  the device, for demos only. With the backend, PINs are stored hashed and logins are real.
 - Notifications are simulated.
 - The logo, banner and app icon are placeholder artwork (`*/src/components/Art.tsx`,
   `app/assets/`) until the final assets are ready.
-- The website already loads all data through an API layer (`web/src/api`), backed for now by a
-  mock server in the browser; the planned Express + MongoDB backend will implement the same API.
-  The mobile app still uses its older on-device store and will be rebuilt on the backend.
 
 ## Repository layout
 
 ```
-app/    React Native mobile app (Expo)
-web/    React website (Vite)
-docs/   Concept board, app walkthrough video, screenshots
+web/     React website (Vite)
+server/  Backend API (Express + MongoDB), being built
+shared/  Types, rules, API contract and sample data used by web and server
+app/     React Native mobile app (Expo)
+docs/    Concept board, app walkthrough video, screenshots
 ```

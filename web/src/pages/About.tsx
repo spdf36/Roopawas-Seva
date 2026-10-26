@@ -1,6 +1,6 @@
+import { Icon as IconName, L, OVERDUE_DAYS, REOPEN_DAYS, l } from '@shared/data';
 import { Link } from 'react-router-dom';
 import { Icon, PageHead, tint } from '../components/ui';
-import { Icon as IconName, L, OVERDUE_DAYS, REOPEN_DAYS, l } from '../data';
 import { useT } from '../store';
 
 // Help for citizens. Every answer here describes what the portal actually does today; keep it in step
@@ -55,6 +55,13 @@ const FAQ: { q: L; a: L }[] = [
   {
     q: l('GPS स्थान क्यों माँगा जाता है?', 'Why is my GPS location asked for?'),
     a: l('इससे टीम को सही जगह ढूँढने में मदद मिलती है। यह वैकल्पिक है: आप केवल पता लिखकर भी शिकायत भेज सकते हैं।', 'It helps the team find the exact spot. It is optional: you can send a complaint with just the address.'),
+  },
+  {
+    q: l('गाँव के विकास कार्य का पैसा कहाँ खर्च हुआ, कैसे जानूँ?', 'How can I see where the money for a village work was spent?'),
+    a: l(
+      '“विकास योजनाएँ” पेज पर हर योजना की स्थिति, वह किस स्तर पर स्वीकृति के लिए रुकी है, किस स्रोत (केंद्र, राज्य…) से कितनी राशि मिली और हर खर्च बिल की फोटो के साथ दिखता है। इसके लिए लॉगिन ज़रूरी नहीं।',
+      'The “Village Yojnas” page shows every yojna’s status, which approval level it is waiting on, how much each source (central, state…) has given, and every expense with a photo of its bill. No login is needed.',
+    ),
   },
   {
     q: l('मेरे पास स्मार्टफोन नहीं है।', 'I do not have a smartphone.'),

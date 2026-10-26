@@ -1,8 +1,8 @@
+import { REOPEN_DAYS, Request, RequestFilter, canReopen, matchesFilter } from '@shared/data';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useConfirmResolution, useReopenRequest, useRequest, useRequests } from '../api/hooks';
 import { Chips, Empty, Icon, Loaded, PageHead, RequestRow, RequestSummary, TextArea, Timeline, tint, useErrorText } from '../components/ui';
-import { REOPEN_DAYS, Request, RequestFilter, canReopen, matchesFilter } from '../data';
 import { useFilterOptions } from '../filters';
 import { useT } from '../store';
 

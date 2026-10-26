@@ -1,9 +1,9 @@
+import { Baseline, Yojna } from '@shared/data';
 import { MutationCache, QueryCache, QueryClient, keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import { Baseline } from '../data';
 import { useStore } from '../store';
 import {
-  AccountFilter, ApiError, CitizenDetails, NewAdmin, NewComplaint, NewNotice, ProfilePatch, RequestQuery, SchemeInput, Session, StatusUpdate,
-  WorkInput, api,
+  AccountFilter, ApiError, CitizenDetails, ExpenseInput, FundInput, InstalmentInput, NewAdmin, NewComplaint, NewNotice, ProfilePatch,
+  RequestQuery, SchemeInput, Session, StatusUpdate, YojnaInput, api,
 } from './index';
 
 /** A 401 means the session is over (logged out elsewhere, or deactivated): drop it everywhere. */
@@ -41,13 +41,17 @@ const keys = {
   request: (id: string) => ['requests', id],
   notices: ['notices'],
   schemes: ['schemes'],
-  works: ['works'],
+  yojnas: ['yojnas'],
+  yojna: (id: string) => ['yojnas', id],
   stats: ['stats'],
   baseline: ['baseline'],
   accounts: (filter: AccountFilter) => ['accounts', filter],
 };
 
 const invalidate = (...queryKeys: string[][]) => Promise.all(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+
+/** Whether the server is a demo (shows demo logins, the any-OTP hint and Reset demo). Fetched once. */
+export const useServerInfo = () => useQuery({ queryKey: ['info'], queryFn: () => api.serverInfo(), staleTime: Infinity });
 
 // ---------- Auth ----------
 
@@ -165,7 +169,7 @@ export const useUpdateBaseline = () => useMutation({
   },
 });
 
-// ---------- Schemes and development works ----------
+// ---------- Schemes ----------
 
 export const useSchemes = () => useQuery({ queryKey: keys.schemes, queryFn: () => api.listSchemes() });
 
@@ -180,18 +184,55 @@ export const useDeleteScheme = () => useMutation({
   onSuccess: () => invalidate(keys.schemes),
 });
 
-export const useWorks = () => useQuery({ queryKey: keys.works, queryFn: () => api.listWorks() });
+// ---------- Village Yojnas ----------
 
-export const useSaveWork = () => useMutation({
-  /** Creates the work, or updates it when an `id` is given. */
-  mutationFn: ({ id, work }: { id?: string; work: WorkInput }) => (id ? api.updateWork(id, work) : api.createWork(work)),
-  onSuccess: () => invalidate(keys.works),
+export const useYojnas = () => useQuery({ queryKey: keys.yojnas, queryFn: () => api.listYojnas() });
+
+export const useYojna = (id: string) => useQuery({ queryKey: keys.yojna(id), queryFn: () => api.getYojna(id) });
+
+/** Every change answers with the whole yojna: show it at once, and refresh the list behind it. */
+function savedYojna(y: Yojna) {
+  queryClient.setQueryData(keys.yojna(y.id), y);
+  return invalidate(keys.yojnas);
+}
+
+export const useSaveYojna = () => useMutation({
+  /** Creates the yojna, or updates its details when an `id` is given. */
+  mutationFn: ({ id, yojna }: { id?: string; yojna: YojnaInput }) => (id ? api.updateYojna(id, yojna) : api.createYojna(yojna)),
+  onSuccess: savedYojna,
 });
 
-export const useDeleteWork = () => useMutation({
-  mutationFn: (id: string) => api.deleteWork(id),
-  onSuccess: () => invalidate(keys.works),
+export const useDeleteYojna = () => useMutation({
+  mutationFn: (id: string) => api.deleteYojna(id),
+  onSuccess: () => invalidate(keys.yojnas),
 });
+
+/** Adds a fund, or updates it when a `fundId` is given. */
+export const useSaveFund = (yojnaId: string) => useMutation({
+  mutationFn: ({ fundId, fund }: { fundId?: string; fund: FundInput }) => (fundId ? api.updateFund(yojnaId, fundId, fund) : api.addFund(yojnaId, fund)),
+  onSuccess: savedYojna,
+});
+
+export const useDeleteFund = (yojnaId: string) => useMutation({ mutationFn: (fundId: string) => api.deleteFund(yojnaId, fundId), onSuccess: savedYojna });
+
+export const useAddInstalment = (yojnaId: string) => useMutation({
+  mutationFn: ({ fundId, instalment }: { fundId: string; instalment: InstalmentInput }) => api.addInstalment(yojnaId, fundId, instalment),
+  onSuccess: savedYojna,
+});
+
+export const useDeleteInstalment = (yojnaId: string) => useMutation({
+  mutationFn: ({ fundId, instalmentId }: { fundId: string; instalmentId: string }) => api.deleteInstalment(yojnaId, fundId, instalmentId),
+  onSuccess: savedYojna,
+});
+
+/** Adds an expense, or updates it when an `expenseId` is given. */
+export const useSaveExpense = (yojnaId: string) => useMutation({
+  mutationFn: ({ expenseId, expense }: { expenseId?: string; expense: ExpenseInput }) =>
+    (expenseId ? api.updateExpense(yojnaId, expenseId, expense) : api.addExpense(yojnaId, expense)),
+  onSuccess: savedYojna,
+});
+
+export const useDeleteExpense = (yojnaId: string) => useMutation({ mutationFn: (expenseId: string) => api.deleteExpense(yojnaId, expenseId), onSuccess: savedYojna });
 
 // ---------- Accounts ----------
 

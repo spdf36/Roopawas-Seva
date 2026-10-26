@@ -1,9 +1,13 @@
+import { Api } from '@shared/api';
 import { useStore } from '../store';
+import { createHttpApi } from './http';
 import { createMockApi } from './mock';
-import { Api } from './types';
 
-export * from './types';
+export * from '@shared/api';
 
-// Until the backend exists, a mock server in the browser stands in for it. Pages never call
-// `api` directly; they go through the hooks in ./hooks.
-export const api: Api = createMockApi(() => useStore.getState().token);
+/** The backend's address from web/.env (e.g. http://localhost:4000); without it the website runs on its mock. */
+const API_URL = import.meta.env.VITE_API_URL?.trim();
+const getToken = () => useStore.getState().token;
+
+// Pages never call `api` directly; they go through the hooks in ./hooks.
+export const api: Api = API_URL ? createHttpApi(API_URL, getToken) : createMockApi(getToken);
