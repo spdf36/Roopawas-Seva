@@ -19,12 +19,12 @@ the changed files, a `git commit` with a suggested message, and `git push`. The 
 | --- | --- | --- |
 | `web/` | Website | React 19, Vite, React Router, TanStack Query, Zustand |
 | `server/` | Backend API (being built) | Express 5, TypeScript run with `tsx`, MongoDB Atlas (Mongoose) |
-| `shared/` | Types, catalogue, business rules, API contract and sample data used by web and server | Plain TypeScript, no dependencies |
-| `app/` | Mobile app (Android APK) | Expo SDK 57, React Native, Expo Router, Zustand (AsyncStorage) |
+| `shared/` | Types, catalogue, business rules, API contract and sample data used by web, server and app | Plain TypeScript, no dependencies |
+| `app/` | Mobile app (Android APK) | Expo SDK 57, React Native, Expo Router, TanStack Query, Zustand (AsyncStorage) |
 | `docs/` | Concept board, walkthrough video, screenshots | |
 
 **Plan:** finish the website → build the backend → connect the website to it (stage 6) → village Yojnas
-(below, done) → rebuild the app on top of the backend. No live deployment until all of that works locally.
+(below, done) → rebuild the app on top of the backend (done). No live deployment until all of that works locally.
 
 **Village Yojnas** (replaced "Development works"): funds by source (central / state / …)
 with sanctioned amount and instalments received; expenses (date, purpose, amount, category, optional bill
@@ -46,7 +46,7 @@ Atlas connection string goes in the server's `.env` (never committed). Decisions
 
 **Shared code:** `shared/data.ts` (types, catalogue, rules such as `nextStatuses`), `shared/api.ts` (the
 `Api` interface: every endpoint with its REST route and error codes), `shared/validate.ts` (input checks
-for content, used by server and mock), `shared/seed.ts` (sample data), `shared/colors.ts`. Both web and server import them as `@shared/...`. Keep `shared/` free of browser-
+for content, used by server and mock), `shared/seed.ts` (sample data), `shared/colors.ts`. Web, server and app import them as `@shared/...`. Keep `shared/` free of browser-
 and Node-specific code, and of dependencies.
 
 **Website data flow:** pages → hooks in `web/src/api/hooks.ts` (TanStack Query) → the `Api` interface in
@@ -54,8 +54,13 @@ and Node-specific code, and of dependencies.
 browser (localStorage); the server implements the same contract. `web/src/store.ts` only holds the
 language and the session (token + user).
 
-The mobile app still has the old all-in-the-store model and is frozen until it is rebuilt on the backend;
-don't port website changes to it.
+**App data flow:** the same as the website: screens → `app/src/api/hooks.ts` → the `Api` interface.
+`EXPO_PUBLIC_API_URL` (set when starting or building the app) uses the server through `app/src/api/http.ts`;
+without it the app runs on `app/src/api/mock.ts`, a copy of the website's mock that saves to AsyncStorage, so
+the demo APK works offline (Village Yojnas then say they need the server). The app reaches `../shared` through
+`metro.config.js` (`watchFolders`) and the `@shared/*` path in its `tsconfig.json`. When a website feature
+changes, change the app's screen too; a change to `web/src/api/mock.ts`, `http.ts` or `hooks.ts` usually needs
+the same change in `app/src/api/`. App screens use inline confirm buttons (`ConfirmBtn`), not alert dialogs.
 
 ## Commands
 

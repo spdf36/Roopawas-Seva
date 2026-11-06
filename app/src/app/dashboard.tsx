@@ -1,69 +1,80 @@
-import { MaterialCommunityIcons as MCI } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { View } from 'react-native';
-import { Card, Grid, Screen, Txt } from '../components/ui';
-import { Icon } from '../data';
-import { useVillageStats } from '../stats';
+import { useVillageStats, useYojnas } from '../api/hooks';
+import { YojnaCard, YojnaTotals } from '../components/Yojna';
+import { Btn, Card, Grid, Heading, Ico, IconName, Loaded, Screen, StackedBar, Txt } from '../components/ui';
 import { useT } from '../store';
 import { C } from '../theme';
 
 export default function Dashboard() {
   const { t } = useT();
-  const st = useVillageStats();
+  const router = useRouter();
+  const stats = useVillageStats();
+  const yojnas = useYojnas();
 
-  const tiles: { icon: Icon; color: string; label: string; value: string; unit: string }[] = [
-    { icon: 'road-variant', color: C.green, label: t('सड़कें', 'Roads'), value: String(st.roads), unit: t('अनुरोध', 'requests') },
-    { icon: 'water', color: C.blue, label: t('पेयजल', 'Drinking Water'), value: String(st.water), unit: t('अनुरोध', 'requests') },
-    { icon: 'lightbulb-on-outline', color: C.green, label: t('स्ट्रीट लाइट', 'Street Lights'), value: String(st.lightsFixed), unit: t('हल', 'fixed') },
-    { icon: 'trash-can-outline', color: C.green, label: t('स्वच्छता', 'Sanitation'), value: '✓', unit: t('नियमित', 'regular') },
-    { icon: 'school-outline', color: C.green, label: t('स्कूल', 'School'), value: String(st.schoolWorks), unit: t('सुधार कार्य', 'repair works') },
-    { icon: 'tree', color: C.green, label: t('पेड़ / पौधारोपण', 'Tree Plantation'), value: String(st.trees), unit: t('पेड़', 'trees') },
-  ];
-
-  const total = (label: string, value: number) => (
-    <View style={{ flex: 1 }}>
-      <Txt size={12} color={C.sub}>{label}</Txt>
-      <Txt w="b" size={19} color={C.green}>{value}</Txt>
-    </View>
+  const total = (label: string, value: number, color: string) => (
+    <View key={label}><Txt size={12} color={C.sub}>{label}</Txt><Txt w="b" size={20} color={color}>{value}</Txt></View>
   );
 
   return (
     <Screen back icon="home-city-outline" iconColor={C.green} title={t('गाँव की प्रगति', 'Village Dashboard')} subtitle={t('रूपावास – गाँव की प्रगति (सार्वजनिक)', 'Roopawas – village progress (public view)')}>
-      <Grid cols={3} gap={8}>
-        {tiles.map((x) => (
-          <Card key={x.label} style={{ alignItems: 'center', paddingHorizontal: 4, minHeight: 112, justifyContent: 'center' }}>
-            <MCI name={x.icon} size={28} color={x.color} />
-            <Txt w="b" size={14} center numberOfLines={1}>{x.label}</Txt>
-            <Txt size={13} color={C.sub} center>
-              <Txt w="b" size={16} color={C.green}>{x.value}</Txt> {x.unit}
-            </Txt>
-          </Card>
-        ))}
-      </Grid>
+      <Loaded q={stats}>
+        {(st) => {
+          const tiles: { icon: IconName; color: string; label: string; value: string; unit: string }[] = [
+            { icon: 'road-variant', color: C.green, label: t('सड़कें', 'Roads'), value: String(st.roads), unit: t('अनुरोध', 'requests') },
+            { icon: 'water', color: C.blue, label: t('पेयजल', 'Drinking Water'), value: String(st.water), unit: t('अनुरोध', 'requests') },
+            { icon: 'lightbulb-on-outline', color: C.green, label: t('स्ट्रीट लाइट', 'Street Lights'), value: String(st.lightsFixed), unit: t('हल', 'fixed') },
+            { icon: 'trash-can-outline', color: C.green, label: t('स्वच्छता', 'Sanitation'), value: '✓', unit: t('नियमित', 'regular') },
+            { icon: 'school-outline', color: C.green, label: t('स्कूल', 'School'), value: String(st.schoolWorks), unit: t('सुधार कार्य', 'repair works') },
+            { icon: 'tree', color: C.green, label: t('पेड़ / पौधारोपण', 'Tree Plantation'), value: String(st.trees), unit: t('पेड़', 'trees') },
+          ];
+          return (
+            <>
+              <Grid cols={3} gap={8}>
+                {tiles.map((x) => (
+                  <Card key={x.label} style={{ alignItems: 'center', gap: 2, paddingHorizontal: 4 }}>
+                    <Ico name={x.icon} size={28} color={x.color} />
+                    <Txt w="b" size={13} center>{x.label}</Txt>
+                    <Txt size={12} color={C.sub} center><Txt w="b" size={14} color={C.text}>{x.value}</Txt> {x.unit}</Txt>
+                  </Card>
+                ))}
+              </Grid>
+              <Card style={{ gap: 8 }}>
+                <Txt w="b" size={15} color={C.navy}>{t('कुल अनुरोध', 'Total Requests')}</Txt>
+                <Txt w="xb" size={32} color={C.navy}>{st.total}</Txt>
+                <StackedBar parts={[{ value: st.resolved, color: C.green }, { value: st.inProgress, color: C.amber }, { value: st.forwarded, color: C.orange }]} />
+                <Grid cols={3}>
+                  {[
+                    total(t('निपटाए गए', 'Resolved'), st.resolved, C.green),
+                    total(t('प्रगति पर', 'In progress'), st.inProgress, C.amber),
+                    total(t('विभाग को भेजे', 'Sent to dept'), st.forwarded, C.orange),
+                  ]}
+                </Grid>
+              </Card>
+              <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Ico name="account-group" size={40} color={C.green} />
+                <View style={{ flex: 1 }}>
+                  <Txt w="b" size={16}>{t('सरकारी योजनाएँ', 'Government Schemes')}</Txt>
+                  <Txt color={C.sub}><Txt w="b" size={20} color={C.green}>{st.schemeApplications}</Txt> {t('आवेदन सहायता', 'applications assisted')}</Txt>
+                </View>
+              </Card>
+            </>
+          );
+        }}
+      </Loaded>
 
-      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <MCI name="account-group" size={32} color={C.green} />
-        <View style={{ flex: 1 }}>
-          <Txt w="b" size={16}>{t('सरकारी योजनाएँ', 'Government Schemes')}</Txt>
-          <Txt size={14} color={C.sub}>
-            <Txt w="b" size={17} color={C.green}>{st.schemeApplications}</Txt> {t('आवेदन सहायता', 'applications assisted')}
-          </Txt>
-        </View>
-      </Card>
-
-      <Card style={{ gap: 6 }}>
-        <Txt w="b" size={15} color={C.navy}>{t('कुल अनुरोध', 'Total Requests')}</Txt>
-        <Txt w="xb" size={30} color={C.navy}>{st.total}</Txt>
-        <View style={{ height: 8, borderRadius: 4, flexDirection: 'row', overflow: 'hidden', backgroundColor: C.border }}>
-          <View style={{ flex: st.resolved, backgroundColor: C.green }} />
-          <View style={{ flex: st.inProgress, backgroundColor: C.amber }} />
-          <View style={{ flex: st.forwarded, backgroundColor: C.orange }} />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-          {total(t('निपटाए गए', 'Resolved'), st.resolved)}
-          {total(t('प्रगति पर', 'In progress'), st.inProgress)}
-          {total(t('विभाग को भेजे', 'Sent to dept'), st.forwarded)}
-        </View>
-      </Card>
+      <Heading right={<Btn small outline label={t('सभी देखें', 'See all')} onPress={() => router.push('/yojnas')} />}>
+        {t('ग्राम विकास योजनाएँ', 'Village Yojnas')}
+      </Heading>
+      <Loaded q={yojnas}>
+        {(list) => list.length === 0 ? <Txt color={C.sub}>{t('अभी कोई योजना दर्ज नहीं', 'No yojnas yet')}</Txt> : (
+          <>
+            <YojnaTotals list={list} />
+            {/* The most recently changed ones; the Yojnas screen has them all. */}
+            {[...list].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4).map((y) => <YojnaCard key={y.id} y={y} onPress={() => router.push(`/yojnas/${y.id}`)} />)}
+          </>
+        )}
+      </Loaded>
     </Screen>
   );
 }

@@ -13,15 +13,17 @@ design, content and flows:
 | **Mobile app** (Android APK) | [`app/`](app) | React Native · Expo SDK 57 · Expo Router |
 | **Website** | [`web/`](web) | React 19 · Vite · React Router |
 
-Both are bilingual (हिंदी / English toggle) and share one login for every role – citizens, admins
-(Sarpanch / Panchayat staff) and the super admin. The account you log in with decides what you see.
+Both are bilingual (हिंदी / English toggle), have the same features, and talk to the same backend
+([`server/`](server)) through one API contract in [`shared/`](shared). They share one login for every role –
+citizens, admins (Sarpanch / Panchayat staff) and the super admin. The account you log in with decides what you see.
 
-▶ **[Watch the app walkthrough](docs/app-demo.mp4)** (2:41, no audio – recorded before the login and roles
-were added, so it shows the earlier separate admin login)
+▶ **[Watch the app walkthrough](docs/app-demo.mp4)** (6:08, no audio): a visitor browsing, Village Yojnas,
+registration, a complaint with photo and GPS, the super admin creating an admin, that admin working the
+complaint and managing content and yojnas, and the citizen seeing the update.
 
 <p>
-  <img src="docs/screenshots/app-login.png" width="200" alt="App login screen">
   <img src="docs/screenshots/app-home.png" width="200" alt="App home screen">
+  <img src="docs/screenshots/app-yojna.png" width="200" alt="Village Yojna – status, approvals and money">
   <img src="docs/screenshots/app-status-tracking.png" width="200" alt="Complaint status tracking">
   <img src="docs/screenshots/app-admin-dashboard.png" width="200" alt="Admin dashboard (super admin)">
 </p>
@@ -41,8 +43,8 @@ were added, so it shows the earlier separate admin login)
 | Super admin | User ID + PIN | Everything an admin can, plus create, deactivate and remove admin accounts |
 
 - One login screen for everyone; there is no separate admin button.
-- The app opens on the login screen. On the website, information pages (home, schemes, notices,
-  village dashboard) are public, and complaints, applications and the admin panel need a login.
+- Information (home, schemes, notices, village dashboard, Village Yojnas, help) is public in both the
+  app and the website; complaints, applications and the admin panel need a login.
 - Deactivated accounts cannot log in. Admins can deactivate citizens; only the super admin manages admins.
 - Each status change records which admin made it, and the citizen sees that in the timeline.
 
@@ -66,7 +68,7 @@ were added, so it shows the earlier separate admin login)
 **Sarpanch / admin**
 - All applications: search by request number, name or mobile; filter by status, category,
   department and ward; sort by date or last update; see how long each request has been open
-  (requests pending 15+ days are flagged). Filters stay in the URL, so a filtered list can be shared
+  (requests pending 15+ days are flagged). On the website, filters stay in the URL, so a filtered list can be shared
 - Update a request's status, department and a note for the citizen
 - Department-wise report and analytics
 - Citizen accounts
@@ -74,7 +76,7 @@ were added, so it shows the earlier separate admin login)
   schemes (a scheme with applications can only be closed); and the recorded figures behind the public dashboard
 - Village Yojnas: create a yojna and set its approval levels, keep its status and progress current, record
   funds, instalments (never more than sanctioned) and expenses with bill photos. Needs the backend; the
-  website's offline mock does not have it
+  offline demo data (website mock, app without a server) does not have it
 
 ## Quick start
 
@@ -93,7 +95,9 @@ cd web
 npm install
 npm run dev
 
-# Mobile app – dev server for Expo Go / a dev build
+# Mobile app – dev server for a dev build. Set EXPO_PUBLIC_API_URL to use the backend, e.g.
+# EXPO_PUBLIC_API_URL=http://192.168.1.20:4000 (the computer's address on the Wi-Fi – a phone cannot reach
+# "localhost"); without it the app runs on built-in sample data saved on the phone
 cd app
 npm install
 npm start
@@ -107,6 +111,10 @@ Needs JDK 17 and the Android SDK (`ANDROID_HOME`).
 cd app
 npm run build:apk        # -> app/builds/roopawas-seva-<version>.apk (arm64-v8a)
 ```
+
+The APK uses the backend whose address is in `EXPO_PUBLIC_API_URL` when it is built (for example
+`EXPO_PUBLIC_API_URL=http://192.168.1.20:4000 npm run build:apk`). Built without it, it is a self-contained
+demo on sample data stored on the phone (everything except Village Yojnas, which need the server).
 
 The APK is signed with the debug key, so it can be installed on demo phones but not uploaded to
 the Play Store. See [`app/README.md`](app/README.md) for details, including a Windows path-length
@@ -130,7 +138,7 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 | Admin (ग्राम सचिव) | `sachiv` | `2468` |
 | Super admin | `superadmin` | `0000` |
 
-1. On the login screen choose **पंजीकरण करें / Register**, fill in the details, enter any 4-digit
+1. Choose **लॉगिन / पंजीकरण करें – Log in / Register**, then **पंजीकरण करें / Register**, fill in the details, enter any 4-digit
    OTP and pick a PIN. You are logged in as the new citizen.
 2. Raise a complaint under **मेरी समस्या**, then follow it under **मेरी आवेदनें**. Log out
    (app: **अन्य** tab; website: header).
@@ -143,10 +151,10 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 
 ## Current limitations
 
-- **Not deployed yet.** The website and the backend (`server/`, Express + MongoDB Atlas) work together
-  locally. The mobile app still keeps its own sample data on the phone until it is rebuilt on the backend.
+- **Not deployed yet.** The website, the app and the backend (`server/`, Express + MongoDB Atlas) work
+  together locally. For phones to use the backend it must be reachable from them (same Wi-Fi for now).
 - **No SMS provider yet.** Outside demo mode, registration OTPs are written to the server log.
-- **The website's mock and the mobile app** (until it is rebuilt) keep accounts and PINs in plain text on
+- **The offline demo data** (website mock, app without a server) keeps accounts and PINs in plain text on
   the device, for demos only. With the backend, PINs are stored hashed and logins are real.
 - Notifications are simulated.
 - The logo, banner and app icon are placeholder artwork (`*/src/components/Art.tsx`,
@@ -157,7 +165,7 @@ Demo accounts (also listed on the login screen – tap/click one to fill it in):
 ```
 web/     React website (Vite)
 server/  Backend API (Express + MongoDB), being built
-shared/  Types, rules, API contract and sample data used by web and server
+shared/  Types, rules, API contract and sample data used by web, server and app
 app/     React Native mobile app (Expo)
 docs/    Concept board, app walkthrough video, screenshots
 ```

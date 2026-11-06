@@ -1,11 +1,10 @@
-import { MaterialCommunityIcons as MCI } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon } from '../../data';
+import { Ico, IconName } from '../../components/ui';
 import { useT } from '../../store';
 import { C, F } from '../../theme';
 
-const TABS: { name: string; icon: Icon; hi: string; en: string }[] = [
+const TABS: { name: string; icon: IconName; hi: string; en: string }[] = [
   { name: 'index', icon: 'home', hi: 'होम', en: 'Home' },
   { name: 'schemes', icon: 'bank-outline', hi: 'योजनाएँ', en: 'Schemes' },
   { name: 'requests', icon: 'clipboard-text-outline', hi: 'आवेदन', en: 'Requests' },
@@ -32,7 +31,7 @@ export default function TabLayout() {
           name={tab.name}
           options={{
             title: t(tab.hi, tab.en),
-            tabBarIcon: ({ color }) => <MCI name={tab.icon} size={24} color={color} />,
+            tabBarIcon: ({ color }) => <Ico name={tab.icon} size={24} color={color} />,
           }}
         />
       ))}

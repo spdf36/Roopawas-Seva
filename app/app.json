@@ -19,7 +19,11 @@
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -39,6 +43,12 @@
           "photosPermission": "Roopawas Seva lets you attach a photo of the problem to your complaint.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Roopawas Seva uses your location only when you add it to a complaint, so the team can find the spot."
         }
       ]
     ],

@@ -1,5 +1,7 @@
-import { AGE_GROUPS, L, OCCUPATIONS, WARDS } from '../data';
-import { CitizenDetails, useT } from '../store';
+import { AGE_GROUPS, L, OCCUPATIONS, WARDS } from '@shared/data';
+import { CitizenDetails } from '../api';
+import { useT } from '../store';
+import { C } from '../theme';
 import { Field, Select } from './ui';
 
 export type CitizenForm = CitizenDetails;
@@ -26,7 +28,7 @@ export function CitizenFields({ form, onChange, mobileEditable }: { form: Citize
         label={t('मोबाइल नंबर', 'Mobile Number')} required icon="cellphone" value={form.mobile} editable={mobileEditable}
         onChangeText={(v) => onChange({ mobile: v.replace(/\D/g, '').slice(0, 10) })}
         keyboardType="phone-pad" maxLength={10} placeholder="98765 43210"
-        style={mobileEditable ? undefined : { backgroundColor: '#EEF2F7', color: '#65738B' }}
+        style={mobileEditable ? undefined : { backgroundColor: '#EEF2F7', color: C.sub }}
       />
       <Select label={t('आयु वर्ग', 'Age Group')} required icon="calendar-account" value={form.ageGroup} placeholder={t('चुनें', 'Select')} options={opts(AGE_GROUPS)} onChange={(ageGroup) => onChange({ ageGroup })} />
       <Select label={t('गाँव / वार्ड', 'Village / Ward')} required icon="map-marker" value={form.ward} placeholder={t('चुनें', 'Select')} options={opts(WARDS)} onChange={(ward) => onChange({ ward })} />

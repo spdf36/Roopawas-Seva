@@ -1,27 +1,37 @@
+import { RequestFilter, matchesFilter } from '@shared/data';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Btn, Chips, Empty, RequestRow, Screen } from '../../components/ui';
-import { RequestFilter, matchesFilter, useFilterOptions } from '../../filters';
-import { useStore, useT, useUser } from '../../store';
+import { useState } from 'react';
+import { useRequests } from '../../api/hooks';
+import { Btn, Chips, Empty, Loaded, NeedLogin, RequestRow, Screen } from '../../components/ui';
+import { useFilterOptions } from '../../filters';
+import { useT, useUser } from '../../store';
 import { C } from '../../theme';
 
 export default function Requests() {
   const { t } = useT();
   const router = useRouter();
-  const requests = useStore((s) => s.requests);
-  const mobile = useUser()?.mobile;
+  const user = useUser();
+  // The API only returns the logged-in citizen's own requests.
+  const requests = useRequests({}, !!user);
   const [filter, setFilter] = useState<RequestFilter>('all');
   const options = useFilterOptions();
-  const list = useMemo(() => requests.filter((r) => r.citizen.mobile === mobile && matchesFilter(r, filter)), [requests, filter, mobile]);
 
   return (
     <Screen tab icon="clipboard-text-clock-outline" title={t('मेरी आवेदनें', 'My Applications')} subtitle={t('अपने अनुरोधों की स्थिति देखें', 'Track the status of your requests')}>
-      <Chips value={filter} options={options} onChange={setFilter} />
-      {list.length === 0 ? <Empty icon="clipboard-text-off-outline" text={t('यहाँ कोई आवेदन नहीं है', 'No applications here')} /> : null}
-      {list.map((r) => (
-        <RequestRow key={r.id} r={r} onPress={() => router.navigate(`/request/${r.id}`)} />
-      ))}
-      <Btn label={t('नई शिकायत दर्ज करें', 'Raise a new complaint')} icon="plus" color={C.orange} onPress={() => router.navigate('/complaint')} />
+      {!user ? <NeedLogin text={t('अपनी शिकायतें और आवेदन देखने के लिए लॉगिन करें।', 'Log in to see your complaints and applications.')} /> : (
+        <>
+          <Chips value={filter} options={options} onChange={setFilter} />
+          <Loaded q={requests}>
+            {(all) => {
+              const list = all.filter((r) => matchesFilter(r, filter));
+              return list.length === 0
+                ? <Empty icon="clipboard-text-off-outline" text={t('यहाँ कोई आवेदन नहीं है', 'No applications here')} />
+                : list.map((r) => <RequestRow key={r.id} r={r} onPress={() => router.push(`/request/${r.id}`)} />);
+            }}
+          </Loaded>
+          <Btn label={t('नई शिकायत दर्ज करें', 'Raise a new complaint')} icon="plus" color={C.orange} onPress={() => router.push('/complaint')} />
+        </>
+      )}
     </Screen>
   );
 }

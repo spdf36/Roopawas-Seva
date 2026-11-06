@@ -1,0 +1,439 @@
+import { Api, ApiError, MAX_PHOTO_BYTES, User } from '@shared/api';
+import {
+  Account, Baseline, CATEGORIES, Coords, Notice, REOPEN_STATUS, Request, Role, Scheme, TAG_VISUAL, canReopen, isMobile,
+  isPin, isStaff, isStaffLoginId, matchesFilter, nextStatuses, normaliseLoginId, updatedAt,
+} from '@shared/data';
+import {
+  FIRST_NEW_SEQ, SEED_ACCOUNTS, SEED_BASELINE, SEED_NOTICES, SEED_REQUESTS, SEED_SCHEMES,
+} from '@shared/seed';
+import { cleanBaseline, cleanNotice, cleanScheme, isDepartment } from '@shared/validate';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/**
+ * A stand-in for the backend that runs on the phone, so the demo APK works without a server. It is the
+ * website's mock (web/src/api/mock.ts) with the same rules; only the storage differs: the "database" is
+ * kept in memory and saved to AsyncStorage after every change. Nothing outside src/api should import this file.
+ */
+
+const DB_KEY = 'roopawas-seva-db';
+/** Simulated network delay, so loading states are exercised during development. */
+const LATENCY_MS = 150;
+
+type Db = {
+  accounts: Account[];
+  requests: Request[];
+  notices: Notice[];
+  schemes: Scheme[];
+  baseline: Baseline;
+  seq: number;
+  /** Session token → account ID. */
+  sessions: Record<string, string>;
+};
+
+// Hermes has neither structuredClone nor crypto.randomUUID.
+const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+const randomId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
+const seed = (): Db => clone({
+  accounts: SEED_ACCOUNTS, requests: SEED_REQUESTS, notices: SEED_NOTICES, schemes: SEED_SCHEMES, baseline: SEED_BASELINE,
+  seq: FIRST_NEW_SEQ, sessions: {},
+});
+
+let memory: Db | null = null;
+
+/** Reads the saved database once, before the app first renders (see src/app/_layout.tsx). */
+export async function loadMockDb() {
+  try {
+    const raw = await AsyncStorage.getItem(DB_KEY);
+    // Collections added since the data was saved start from the sample data.
+    memory = raw ? { ...seed(), ...(JSON.parse(raw) as Partial<Db>) } : seed();
+  } catch {
+    // Unreadable storage falls back to the sample data.
+    memory = seed();
+  }
+}
+
+/** A working copy, so a request that fails half-way changes nothing (as with a real database). */
+function load(): Db {
+  memory ??= seed();
+  return clone(memory);
+}
+
+function save(db: Db) {
+  memory = db;
+  AsyncStorage.setItem(DB_KEY, JSON.stringify(db)).catch(() => {
+    // Storage full (photos fill it fastest): the change stays in memory until the app is closed.
+  });
+}
+
+const fail = (status: number, code: ApiError['code']): never => {
+  throw new ApiError(status, code);
+};
+
+const toUser = ({ pin: _pin, ...user }: Account): User => user;
+const isOpen = (r: Request) => r.status !== 'resolved' && r.status !== 'rejected';
+const newToken = () => randomId() + randomId();
+const newId = (prefix: string) => `${prefix}-${randomId().slice(-8)}`;
+
+function cleanCoords(c: Coords | undefined): Coords | undefined {
+  if (!c) return undefined;
+  const { lat, lng, accuracy } = c;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return fail(400, 'invalid');
+  return { lat, lng, accuracy: Number.isFinite(accuracy) ? Math.round(accuracy!) : undefined };
+}
+
+function cleanPhoto(photo: string | undefined): string | undefined {
+  if (!photo) return undefined;
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(photo)) return fail(400, 'invalid');
+  if (photo.length > MAX_PHOTO_BYTES) return fail(413, 'too_large');
+  return photo;
+}
+
+function find<T extends { id: string }>(list: T[], id: string): T {
+  return list.find((x) => x.id === id) ?? fail(404, 'not_found');
+}
+
+export function createMockApi(getToken: () => string | null): Api {
+  /** Runs one "request" against the database, with latency, and saves it afterwards. */
+  async function call<T>(handler: (db: Db) => T): Promise<T> {
+    await new Promise((resolve) => setTimeout(resolve, LATENCY_MS));
+    const db = load();
+    const result = handler(db);
+    save(db);
+    // Callers get copies, as they would from a real server.
+    return result === undefined ? result : clone(result);
+  }
+
+  /** For features that only the real server has. */
+  const unavailable = (): Promise<never> => call(() => fail(501, 'unavailable'));
+
+  /** The logged-in, active account, if any (for endpoints that guests may also call). */
+  function currentUser(db: Db): Account | undefined {
+    const token = getToken();
+    return token ? db.accounts.find((a) => a.id === db.sessions[token] && a.active) : undefined;
+  }
+
+  /** The logged-in account; rejects missing, ended or deactivated sessions and the wrong roles. */
+  function auth(db: Db, roles?: Role[]): Account {
+    const acc = currentUser(db);
+    if (!acc) return fail(401, 'unauthorized');
+    if (roles && !roles.includes(acc.role)) return fail(403, 'forbidden');
+    return acc;
+  }
+
+  function findRequest(db: Db, id: string, user: Account): Request {
+    const r = db.requests.find((x) => x.id === id);
+    // Someone else's request looks exactly like a missing one.
+    if (!r || (!isStaff(user) && r.citizen.mobile !== user.mobile)) return fail(404, 'not_found');
+    return r;
+  }
+
+  function addRequest(db: Db, user: Account, fields: Omit<Request, 'id' | 'status' | 'createdAt' | 'history' | 'citizen'>): Request {
+    const now = Date.now();
+    const req: Request = {
+      ...fields,
+      id: `RP-${new Date().getFullYear()}-${String(db.seq).padStart(5, '0')}`,
+      status: 'submitted',
+      createdAt: now,
+      history: [{ status: 'submitted', at: now }],
+      citizen: { name: user.name, mobile: user.mobile, ward: user.ward },
+    };
+    db.requests.unshift(req);
+    db.seq += 1;
+    return req;
+  }
+
+  function startSession(db: Db, acc: Account) {
+    const token = newToken();
+    db.sessions[token] = acc.id;
+    return { token, user: toUser(acc) };
+  }
+
+  /** Ends every session of an account, e.g. when it is deactivated or removed. */
+  function endSessions(db: Db, accountId: string) {
+    for (const [token, id] of Object.entries(db.sessions)) if (id === accountId) delete db.sessions[token];
+  }
+
+  const mobileTaken = (db: Db, mobile: string) => db.accounts.some((a) => a.mobile === mobile || normaliseLoginId(a.loginId) === mobile);
+
+  return {
+    // The mock is always a demo: sample data, demo logins, any OTP.
+    serverInfo: () => call(() => ({ demoMode: true })),
+
+    login: (loginId, pin) =>
+      call((db) => {
+        const key = normaliseLoginId(loginId);
+        const acc = db.accounts.find((a) => normaliseLoginId(a.loginId) === key && a.pin === pin);
+        if (!acc) return fail(401, 'invalid_login');
+        if (!acc.active) return fail(403, 'inactive');
+        return startSession(db, acc);
+      }),
+
+    logout: () => {
+      // Read the token now: the caller clears its session without waiting for the reply.
+      const token = getToken();
+      return call((db) => {
+        if (token) delete db.sessions[token];
+      });
+    },
+
+    sendOtp: (mobile) =>
+      call((db) => {
+        if (!isMobile(mobile)) return fail(400, 'invalid');
+        if (mobileTaken(db, mobile)) return fail(409, 'exists');
+        // Demo: no SMS is sent and any 4-digit OTP is accepted.
+      }),
+
+    register: (details, otp, pin) =>
+      call((db) => {
+        const { name, mobile, ageGroup, ward, occupation, family } = details;
+        if (!name.trim() || !ageGroup || !ward || !occupation || !isMobile(mobile) || !isPin(pin) || !isPin(otp)) return fail(400, 'invalid');
+        if (mobileTaken(db, mobile)) return fail(409, 'exists');
+        const acc: Account = {
+          id: `u-${Date.now()}`, role: 'citizen', name: name.trim(), mobile, loginId: mobile, pin,
+          ageGroup, ward, occupation, family: family.trim(), active: true, createdAt: Date.now(),
+        };
+        db.accounts.push(acc);
+        return startSession(db, acc);
+      }),
+
+    me: () => call((db) => toUser(auth(db))),
+
+    updateProfile: (patch) =>
+      call((db) => {
+        const acc = auth(db, ['citizen']);
+        const { name, ageGroup, ward, occupation, family } = patch;
+        if (name !== undefined && !name.trim()) return fail(400, 'invalid');
+        if (name !== undefined) acc.name = name.trim();
+        if (ageGroup) acc.ageGroup = ageGroup;
+        if (ward) acc.ward = ward;
+        if (occupation) acc.occupation = occupation;
+        if (family !== undefined) acc.family = family.trim();
+        return toUser(acc);
+      }),
+
+    listRequests: ({ q, status = 'all', category, department, ward, sort = 'newest' } = {}) =>
+      call((db) => {
+        const user = auth(db);
+        const text = q?.trim().toLowerCase();
+        const digits = q?.replace(/\D/g, '');
+        const list = db.requests.filter((r) =>
+          (isStaff(user) || r.citizen.mobile === user.mobile) &&
+          matchesFilter(r, status) &&
+          (!category || (category === 'application' ? r.kind === 'application' : r.categoryId === category)) &&
+          (!department || r.department === department) &&
+          (!ward || r.citizen.ward === ward) &&
+          (!text || r.id.toLowerCase().includes(text) || r.citizen.name.toLowerCase().includes(text) || (!!digits && digits.length >= 3 && r.citizen.mobile.includes(digits))),
+        );
+        const key = sort === 'updated' ? updatedAt : (r: Request) => r.createdAt;
+        return list.sort((a, b) => (sort === 'oldest' ? key(a) - key(b) : key(b) - key(a)));
+      }),
+
+    getRequest: (id) => call((db) => findRequest(db, id, auth(db))),
+
+    createComplaint: ({ categoryId, description, location, coords, photo }) =>
+      call((db) => {
+        const user = auth(db, ['citizen']);
+        const cat = CATEGORIES.find((c) => c.id === categoryId);
+        if (!cat || description.trim().length < 5 || !location.trim()) return fail(400, 'invalid');
+        return addRequest(db, user, {
+          kind: 'complaint', categoryId: cat.id, department: cat.dept, description: description.trim(), location: location.trim(),
+          coords: cleanCoords(coords), photo: cleanPhoto(photo),
+          title: { hi: `${cat.name.hi} की समस्या`, en: `${cat.name.en} Problem` },
+        });
+      }),
+
+    applyScheme: (schemeId) =>
+      call((db) => {
+        const user = auth(db, ['citizen']);
+        const scheme = db.schemes.find((s) => s.id === schemeId);
+        if (!scheme?.open) return fail(400, 'invalid');
+        if (db.requests.some((r) => r.schemeId === schemeId && r.citizen.mobile === user.mobile)) return fail(409, 'exists');
+        return addRequest(db, user, {
+          kind: 'application', schemeId, groupId: scheme.groupId, department: scheme.dept, location: 'रूपावास', title: scheme.name,
+          description: `${scheme.name.hi} के लिए आवेदन।`,
+        });
+      }),
+
+    updateStatus: (id, { status, note, department }) =>
+      call((db) => {
+        const user = auth(db, ['admin', 'superadmin']);
+        const r = findRequest(db, id, user);
+        if (!nextStatuses(r.status).includes(status)) return fail(400, 'invalid');
+        if (department !== undefined && !isDepartment(department)) return fail(400, 'invalid');
+        r.status = status;
+        r.department = department ?? r.department;
+        r.confirmed = status === 'resolved' ? r.confirmed : false;
+        r.history.push({ status, at: Date.now(), note: note?.trim() || undefined, by: user.name, byId: user.id });
+        return r;
+      }),
+
+    confirmResolution: (id) =>
+      call((db) => {
+        const user = auth(db, ['citizen']);
+        const r = findRequest(db, id, user);
+        if (r.status !== 'resolved') return fail(400, 'invalid');
+        r.confirmed = true;
+        return r;
+      }),
+
+    reopenRequest: (id, reason) =>
+      call((db) => {
+        const user = auth(db, ['citizen']);
+        const r = findRequest(db, id, user);
+        if (!canReopen(r) || reason.trim().length < 5) return fail(400, 'invalid');
+        r.status = REOPEN_STATUS;
+        r.reopened = (r.reopened ?? 0) + 1;
+        r.history.push({ status: REOPEN_STATUS, at: Date.now(), note: reason.trim(), by: user.name, byId: user.id });
+        return r;
+      }),
+
+    listNotices: () => call((db) => [...db.notices].sort((a, b) => b.publishedAt - a.publishedAt)),
+
+    createNotice: (n) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        const fields = cleanNotice(n);
+        const notice: Notice = {
+          id: newId('n'), ...fields, ...TAG_VISUAL[fields.tag], publishedAt: Date.now(),
+          source: { hi: 'ग्राम पंचायत रूपावास', en: 'Gram Panchayat Roopawas' },
+        };
+        db.notices.unshift(notice);
+        return notice;
+      }),
+
+    updateNotice: (id, n) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        const notice = find(db.notices, id);
+        const fields = cleanNotice(n);
+        // A notice keeps its own icon unless its category changes.
+        Object.assign(notice, fields, fields.tag !== notice.tag ? TAG_VISUAL[fields.tag] : {}, { updatedAt: Date.now() });
+        return notice;
+      }),
+
+    deleteNotice: (id) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        find(db.notices, id);
+        db.notices = db.notices.filter((n) => n.id !== id);
+      }),
+
+    listSchemes: () =>
+      call((db) => (isStaff(currentUser(db)) ? db.schemes : db.schemes.filter((s) => s.open))),
+
+    createScheme: (s) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        const scheme: Scheme = { id: newId('s'), ...cleanScheme(s) };
+        db.schemes.push(scheme);
+        return scheme;
+      }),
+
+    updateScheme: (id, s) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        // Existing applications keep their own title, department and group, so editing is safe.
+        return Object.assign(find(db.schemes, id), cleanScheme(s));
+      }),
+
+    deleteScheme: (id) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        find(db.schemes, id);
+        if (db.requests.some((r) => r.schemeId === id)) return fail(409, 'in_use');
+        db.schemes = db.schemes.filter((s) => s.id !== id);
+      }),
+
+    // Village Yojnas were built for the real server only (see CLAUDE.md); offline, the pages say so.
+    listYojnas: unavailable,
+    getYojna: unavailable,
+    createYojna: unavailable,
+    updateYojna: unavailable,
+    deleteYojna: unavailable,
+    addFund: unavailable,
+    updateFund: unavailable,
+    deleteFund: unavailable,
+    addInstalment: unavailable,
+    deleteInstalment: unavailable,
+    addExpense: unavailable,
+    updateExpense: unavailable,
+    deleteExpense: unavailable,
+
+    getBaseline: () =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        return db.baseline;
+      }),
+
+    updateBaseline: (b) =>
+      call((db) => {
+        auth(db, ['admin', 'superadmin']);
+        db.baseline = cleanBaseline(b);
+        return db.baseline;
+      }),
+
+    getVillageStats: () =>
+      call((db) => {
+        const B = db.baseline;
+        const count = (fn: (r: Request) => boolean) => db.requests.filter(fn).length;
+        return {
+          total: B.total + db.requests.length,
+          resolved: B.resolved + count((r) => r.status === 'resolved'),
+          inProgress: B.inProgress + count((r) => isOpen(r) && r.status !== 'forwarded'),
+          forwarded: B.forwarded + count((r) => r.status === 'forwarded'),
+          roads: B.roads + count((r) => r.categoryId === 'road' && isOpen(r)),
+          water: B.water + count((r) => r.categoryId === 'water' && isOpen(r)),
+          lightsFixed: B.lightsFixed + count((r) => r.categoryId === 'light' && r.status === 'resolved'),
+          schemeApplications: B.schemeApplications + count((r) => r.kind === 'application'),
+          schoolWorks: B.schoolWorks,
+          trees: B.trees,
+        };
+      }),
+
+    listAccounts: (filter) =>
+      call((db) => {
+        auth(db, filter === 'citizen' ? ['admin', 'superadmin'] : ['superadmin']);
+        return db.accounts.filter((a) => (filter === 'citizen' ? a.role === 'citizen' : isStaff(a))).map(toUser);
+      }),
+
+    createAdmin: ({ name, loginId, pin, mobile, designation }) =>
+      call((db) => {
+        auth(db, ['superadmin']);
+        const key = normaliseLoginId(loginId);
+        if (!name.trim() || !designation || !isStaffLoginId(key) || !isMobile(mobile) || !isPin(pin)) return fail(400, 'invalid');
+        if (db.accounts.some((a) => normaliseLoginId(a.loginId) === key)) return fail(409, 'exists');
+        const acc: Account = { id: `u-${Date.now()}`, role: 'admin', name: name.trim(), loginId: key, pin, mobile, designation, active: true, createdAt: Date.now() };
+        db.accounts.push(acc);
+        return toUser(acc);
+      }),
+
+    setAccountActive: (id, active) =>
+      call((db) => {
+        const me = auth(db, ['admin', 'superadmin']);
+        const acc = db.accounts.find((a) => a.id === id);
+        if (!acc) return fail(404, 'not_found');
+        // Nobody can switch themselves off; admins manage citizens; only the super admin manages admins.
+        if (acc.id === me.id || acc.role === 'superadmin' || (acc.role === 'admin' && me.role !== 'superadmin')) return fail(403, 'forbidden');
+        acc.active = active;
+        if (!active) endSessions(db, acc.id);
+        return toUser(acc);
+      }),
+
+    removeAccount: (id) =>
+      call((db) => {
+        auth(db, ['superadmin']);
+        const acc = db.accounts.find((a) => a.id === id);
+        if (!acc) return fail(404, 'not_found');
+        if (acc.role !== 'admin') return fail(403, 'forbidden');
+        db.accounts = db.accounts.filter((a) => a.id !== id);
+        endSessions(db, id);
+      }),
+
+    resetDemo: () =>
+      call((db) => {
+        Object.assign(db, seed());
+      }),
+  };
+}

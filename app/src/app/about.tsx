@@ -1,99 +1,125 @@
-import { MaterialCommunityIcons as MCI } from '@expo/vector-icons';
-import { View } from 'react-native';
-import { Card, Grid, Screen, Txt } from '../components/ui';
-import { Icon, L, l } from '../data';
-import { useT } from '../store';
+import { L, OVERDUE_DAYS, REOPEN_DAYS, l } from '@shared/data';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
+import { Card, Heading, Ico, IconName, Row, Screen, Txt } from '../components/ui';
+import { useT, useUser } from '../store';
 import { C } from '../theme';
 
-const CHANNELS: { icon: Icon; color: string; name: L; note: L }[] = [
-  { icon: 'cellphone', color: C.navy, name: l('मोबाइल ऐप', 'Mobile App'), note: l('iOS / Android', 'iOS / Android') },
-  { icon: 'web', color: C.navy, name: l('वेब पोर्टल', 'Web Portal'), note: l('किसी भी ब्राउज़र में', 'Any browser') },
-  { icon: 'whatsapp', color: C.green, name: l('व्हाट्सऐप', 'WhatsApp'), note: l('त्वरित अपडेट के लिए', 'For quick updates') },
-  { icon: 'face-agent', color: C.red, name: l('ग्राम हेल्प डेस्क', 'Village Help Desk'), note: l('बिना स्मार्टफोन वालों के लिए', 'For those without smartphones') },
+// Help for citizens, as on the website's Help page. Every answer describes what the app actually does today;
+// keep it in step when features change.
+
+const STEPS: { icon: IconName; title: L; text: L; to: string }[] = [
+  {
+    icon: 'account-plus-outline', to: '/register',
+    title: l('1. पंजीकरण करें', '1. Register'),
+    text: l('अपना नाम, मोबाइल नंबर, वार्ड और पेशा भरें, OTP डालें और लॉगिन के लिए 4 अंकों का पिन चुनें।', 'Enter your name, mobile number, ward and occupation, enter the OTP and choose a 4-digit PIN for logging in.'),
+  },
+  {
+    icon: 'bullhorn-outline', to: '/complaint',
+    title: l('2. शिकायत दर्ज करें', '2. Raise a complaint'),
+    text: l('श्रेणी चुनें, समस्या लिखें, चाहें तो फोटो और GPS स्थान जोड़ें। आपको RP-2026-00128 जैसा आवेदन नंबर मिलेगा।', 'Choose a category, describe the problem, and add a photo and your GPS location if you like. You get a request number such as RP-2026-00128.'),
+  },
+  {
+    icon: 'bank-outline', to: '/schemes',
+    title: l('3. योजनाओं में आवेदन करें', '3. Apply for schemes'),
+    text: l('आपके पेशे से जुड़ी योजनाएँ सबसे ऊपर दिखती हैं। “आवेदन करें” दबाते ही आवेदन पंचायत तक पहुँच जाता है।', 'Schemes for your occupation are shown first. Pressing “Apply” sends your application to the Panchayat.'),
+  },
+  {
+    icon: 'clipboard-text-clock-outline', to: '/requests',
+    title: l('4. स्थिति देखें', '4. Track the status'),
+    text: l('“मेरी आवेदनें” में हर आवेदन के छह चरण दिखते हैं, साथ में पंचायत की टिप्पणी और तारीख।', 'Under “My Applications” each request shows its six steps, with the Panchayat’s notes and dates.'),
+  },
 ];
 
-const USERS: { icon: Icon; name: L }[] = [
-  { icon: 'school', name: l('छात्र (युवा वर्ग)', 'Students (Youth)') },
-  { icon: 'sprout', name: l('किसान', 'Farmers') },
-  { icon: 'face-woman', name: l('महिला', 'Women') },
-  { icon: 'human-cane', name: l('वरिष्ठ नागरिक', 'Senior Citizens') },
-  { icon: 'account-group', name: l('सभी ग्रामीण नागरिक', 'All Villagers') },
-];
-
-const WHY: L[] = [
-  l('सरकारी योजनाओं तक आसान पहुँच', 'Easy access to government schemes'),
-  l('समस्या की ऑनलाइन शिकायत और ट्रैकिंग', 'Online complaints with tracking'),
-  l('पारदर्शिता और जवाबदेही', 'Transparency and accountability'),
-  l('समय पर सूचना और अलर्ट', 'Timely information and alerts'),
-  l('हर नागरिक के लिए समान अवसर', 'Equal opportunity for every citizen'),
-];
-
-const STEPS: { color: string; title: L; note: L }[] = [
-  { color: C.green, title: l('डिजिटल सर्वे', 'Digital Survey'), note: l('पहले 100 दिन', 'First 100 days') },
-  { color: '#F2A91C', title: l('योजनाओं की जानकारी', 'Scheme Information'), note: l('हर घर तक', 'To every home') },
-  { color: C.red, title: l('समस्या समाधान', 'Problem Resolution'), note: l('समयबद्ध', 'Time-bound') },
-  { color: C.orange, title: l('विकास कार्यों की निगरानी', 'Monitoring Development Works'), note: l('पारदर्शिता के साथ', 'With transparency') },
-  { color: C.teal, title: l('रूपावास को स्मार्ट और आत्मनिर्भर बनाना', 'A smart, self-reliant Roopawas'), note: l('', '') },
+const FAQ: { q: L; a: L }[] = [
+  {
+    q: l('मेरी शिकायत कौन देख सकता है?', 'Who can see my complaint?'),
+    a: l('केवल आप और ग्राम पंचायत के अधिकृत कर्मचारी। दूसरे नागरिक आपकी शिकायत या आपका मोबाइल नंबर नहीं देख सकते।', 'Only you and authorised Gram Panchayat staff. Other citizens cannot see your complaint or your mobile number.'),
+  },
+  {
+    q: l('शिकायत के बाद क्या होता है?', 'What happens after I raise a complaint?'),
+    a: l('पंचायत उसे प्राप्त कर जांचती है, समीक्षा करती है और ज़रूरत हो तो संबंधित विभाग को भेजती है। हर बदलाव आपकी आवेदन की स्थिति में दिखता है।', 'The Panchayat receives and checks it, reviews it and, if needed, forwards it to the concerned department. Every change shows up in your request’s status.'),
+  },
+  {
+    q: l('“हल” लिखा है पर समस्या ठीक नहीं हुई, क्या करूँ?', 'It says “Resolved” but the problem is not fixed. What can I do?'),
+    a: l(
+      `आवेदन खोलें और “नहीं, समस्या अभी भी है” दबाकर कारण लिखें। आवेदन फिर से पंचायत की समीक्षा में चला जाएगा। यह हल होने के ${REOPEN_DAYS} दिन के भीतर और पुष्टि करने से पहले ही हो सकता है।`,
+      `Open the request, press “No, the problem is still there” and write what is wrong. It goes back to the Panchayat for review. You can do this within ${REOPEN_DAYS} days of it being resolved, and before you confirm it.`,
+    ),
+  },
+  {
+    q: l('मेरी शिकायत पर बहुत समय लग रहा है।', 'My complaint is taking a long time.'),
+    a: l(
+      `पंचायत को हर खुले आवेदन के दिन दिखते हैं, और ${OVERDUE_DAYS} दिन से अधिक पुराने आवेदन अलग से चिह्नित होते हैं। आप अपने आवेदन नंबर के साथ पंचायत कार्यालय में भी पूछ सकते हैं।`,
+      `The Panchayat sees how many days every open request has been waiting, and requests older than ${OVERDUE_DAYS} days are flagged. You can also ask at the Panchayat office, quoting your request number.`,
+    ),
+  },
+  {
+    q: l('GPS स्थान क्यों माँगा जाता है?', 'Why is my GPS location asked for?'),
+    a: l('इससे टीम को सही जगह ढूँढने में मदद मिलती है। यह वैकल्पिक है: आप केवल पता लिखकर भी शिकायत भेज सकते हैं।', 'It helps the team find the exact spot. It is optional: you can send a complaint with just the address.'),
+  },
+  {
+    q: l('गाँव के विकास कार्य का पैसा कहाँ खर्च हुआ, कैसे जानूँ?', 'How can I see where the money for a village work was spent?'),
+    a: l(
+      '“ग्राम विकास योजनाएँ” में हर योजना की स्थिति, वह किस स्तर पर स्वीकृति के लिए रुकी है, किस स्रोत (केंद्र, राज्य…) से कितनी राशि मिली और हर खर्च बिल की फोटो के साथ दिखता है। इसके लिए लॉगिन ज़रूरी नहीं।',
+      '“Village Yojnas” shows every yojna’s status, which approval level it is waiting on, how much each source (central, state…) has given, and every expense with a photo of its bill. No login is needed.',
+    ),
+  },
+  {
+    q: l('मेरे पास स्मार्टफोन नहीं है।', 'I do not have a smartphone.'),
+    a: l('वेबसाइट किसी भी ब्राउज़र में चलती है। आप ग्राम पंचायत कार्यालय जाकर भी शिकायत या आवेदन दर्ज करवा सकते हैं।', 'The website works in any browser. You can also visit the Gram Panchayat office to have a complaint or application registered.'),
+  },
 ];
 
 export default function About() {
   const { t, tl } = useT();
+  const router = useRouter();
+  const user = useUser();
+  const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <Screen back icon="information-outline" title={t('रूपावास सेवा के बारे में', 'About Roopawas Seva')}>
-      <Card style={{ gap: 10 }}>
-        <Txt w="b" size={16} color={C.red}>{t('कई माध्यमों से पहुँच', 'Multi-Channel Access')}</Txt>
-        <Grid cols={2}>
-          {CHANNELS.map((c) => (
-            <View key={c.name.en} style={{ alignItems: 'center', paddingVertical: 6 }}>
-              <MCI name={c.icon} size={32} color={c.color} />
-              <Txt w="b" size={15} center>{tl(c.name)}</Txt>
-              <Txt size={12} color={C.sub} center>{tl(c.note)}</Txt>
-            </View>
-          ))}
-        </Grid>
-      </Card>
+    <Screen back icon="help-circle-outline" title={t('सहायता और जानकारी', 'Help & About')}>
+      <Txt size={16} color={C.sub}>
+        {t(
+          'हर नागरिक के लिए योजना की जानकारी, समस्या की शिकायत और समाधान की निगरानी – एक ही जगह। पंचायत की सूचनाएँ और गाँव की प्रगति सबके लिए खुली हैं; शिकायत और आवेदन के लिए एक बार पंजीकरण ज़रूरी है।',
+          'Scheme information, complaints and resolution tracking for every citizen – in one place. Notices and village progress are open to everyone; complaints and applications need a one-time registration.',
+        )}
+      </Txt>
 
-      <Card style={{ gap: 10 }}>
-        <Txt w="b" size={16} color={C.purple}>{t('कौन उपयोग कर सकता है?', 'Who Can Use?')}</Txt>
-        <Grid cols={3}>
-          {USERS.map((u) => (
-            <View key={u.name.en} style={{ alignItems: 'center', paddingVertical: 6 }}>
-              <MCI name={u.icon} size={30} color={C.purple} />
-              <Txt w="m" size={13} center>{tl(u.name)}</Txt>
-            </View>
-          ))}
-        </Grid>
-      </Card>
-
-      <Card style={{ gap: 6 }}>
-        <Txt w="b" size={16} color={C.navy}>{t('रूपावास सेवा क्यों?', 'Why Roopawas Seva?')}</Txt>
-        {WHY.map((w) => (
-          <View key={w.en} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <MCI name="check-circle" size={19} color={C.green} />
-            <Txt style={{ flex: 1 }}>{tl(w)}</Txt>
-          </View>
-        ))}
-      </Card>
-
-      <Card style={{ gap: 8, backgroundColor: '#F1F9F0' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <MCI name="hand-heart" size={30} color={C.green} />
-          <Txt w="b" size={18} color={C.navy} style={{ flex: 1 }}>{t('हमारा संकल्प – 5 साल, 5 बड़े कदम', 'Our Pledge – 5 Years, 5 Big Steps')}</Txt>
-        </View>
-        {STEPS.map((st, i) => (
-          <View key={st.title.en} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: st.color, alignItems: 'center', justifyContent: 'center' }}>
-              <Txt w="b" size={14} color="#FFFFFF">{i + 1}</Txt>
-            </View>
+      <Heading>{t('कैसे उपयोग करें', 'How to use it')}</Heading>
+      {STEPS.map((s) => {
+        // Registration is for visitors, the rest for citizens; anything else just explains.
+        const usable = s.to === '/register' ? !user : user?.role === 'citizen' || s.to === '/schemes';
+        return (
+          <Card key={s.to} onPress={usable ? () => router.push(s.to) : undefined} style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+            <Ico name={s.icon} size={28} color={C.navy} />
             <View style={{ flex: 1 }}>
-              <Txt w="sb" size={15}>{tl(st.title)}</Txt>
-              {st.note.en ? <Txt size={12} color={C.sub}>({tl(st.note)})</Txt> : null}
+              <Txt w="b" size={16}>{tl(s.title)}</Txt>
+              <Txt size={14} color={C.sub}>{tl(s.text)}</Txt>
             </View>
-          </View>
-        ))}
-        <Txt w="b" size={16} color={C.green} center style={{ marginTop: 4 }}>{t('मिलकर बनाएं बेहतर रूपावास', 'Together, let us build a better Roopawas')}</Txt>
+          </Card>
+        );
+      })}
+
+      <Heading>{t('अक्सर पूछे जाने वाले सवाल', 'Frequently asked questions')}</Heading>
+      {FAQ.map((f, i) => (
+        <Card key={f.q.en} style={{ paddingVertical: 4 }}>
+          <Pressable onPress={() => setOpen(open === i ? null : i)} accessibilityRole="button" style={{ paddingVertical: 8 }}>
+            <Row style={{ alignItems: 'flex-start' }}>
+              <Txt w="b" size={15} style={{ flex: 1 }}>{tl(f.q)}</Txt>
+              <Ico name={open === i ? 'chevron-up' : 'chevron-down'} size={22} color={C.sub} />
+            </Row>
+          </Pressable>
+          {open === i ? <Txt size={14} color={C.sub} style={{ paddingBottom: 8 }}>{tl(f.a)}</Txt> : null}
+        </Card>
+      ))}
+
+      <Card style={{ flexDirection: 'row', gap: 12, alignItems: 'center', backgroundColor: C.blueSoft, borderColor: '#BCD3F5' }}>
+        <Ico name="account-question-outline" size={28} color={C.navy} />
+        <Txt style={{ flex: 1 }}>{t('और सहायता चाहिए? ग्राम पंचायत कार्यालय, रूपावास में संपर्क करें।', 'Need more help? Contact the Gram Panchayat office in Roopawas.')}</Txt>
       </Card>
+      <Txt w="b" size={16} color={C.green} center>{t('मिलकर बनाएं बेहतर रूपावास', 'Together, let us build a better Roopawas')}</Txt>
     </Screen>
   );
 }
