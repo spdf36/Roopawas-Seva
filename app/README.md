@@ -5,10 +5,20 @@ website (`../web`) and uses the same API contract (`../shared/api.ts`) and backe
 
 ## Where the data comes from
 
-| `EXPO_PUBLIC_API_URL` when the app is started or built | The app uses |
+`app/.env` (committed) sets `EXPO_PUBLIC_API_URL=https://api.roopawas.in`, so `npm start` and `npm run build:apk`
+use the live server. To use something else on your own computer, create `app/.env.local` (not committed; it wins
+over `.env`, also for APK builds):
+
+| `EXPO_PUBLIC_API_URL` | The app uses |
 | --- | --- |
-| Set, e.g. `http://192.168.1.20:4000` | The backend. Logins, requests, photos… are real and shared with the website |
-| Not set | Built-in sample data saved on the phone (AsyncStorage): a self-contained demo. Village Yojnas need the server and say so |
+| `https://api.roopawas.in` (the default from `.env`) | The live backend. Logins, requests, photos… are real and shared with the website |
+| e.g. `http://192.168.1.20:4000` | A backend running on your computer |
+| Empty (`EXPO_PUBLIC_API_URL=`) | Built-in sample data saved on the phone (AsyncStorage): a self-contained demo that works offline. Village Yojnas need the server and say so |
+
+With a server, the app covers the screen with a **No internet connection** page whenever the phone is offline
+(`src/net.ts`, `src/components/Fallback.tsx`); requests wait and continue by themselves once it is back, and
+whatever was on screen is kept. A screen that crashes while rendering shows a *Try again* page instead of
+closing the app.
 
 A phone cannot reach `localhost` on the computer: use the computer's address on the Wi-Fi (`ipconfig`),
 and allow port 4000 through the Windows firewall. The server's `WEB_ORIGIN` only matters for browsers, not
@@ -26,8 +36,7 @@ npm run lint
 ## Build the demo APK
 
 ```bash
-npm run build:apk                                              # sample data on the phone
-EXPO_PUBLIC_API_URL=http://192.168.1.20:4000 npm run build:apk  # uses that backend (PowerShell: $env:EXPO_PUBLIC_API_URL='…'; npm run build:apk)
+npm run build:apk    # uses the server from .env / .env.local (the live server by default)
 # -> builds/roopawas-seva-<version>.apk
 ```
 

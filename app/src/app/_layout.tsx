@@ -13,10 +13,15 @@ import { useEffect, useState } from 'react';
 import { API_URL } from '../api';
 import { queryClient, useSessionCheck } from '../api/hooks';
 import { loadMockDb } from '../api/mock';
+import { NoInternet } from '../components/Fallback';
+import { useOffline } from '../net';
 import { useStore, useUser } from '../store';
 import { C } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
+
+// A screen that throws while rendering shows a Try again page instead of closing the app.
+export { CrashScreen as ErrorBoundary } from '../components/Fallback';
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -40,8 +45,15 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <StatusBar style="dark" />
       <Routes />
+      <OfflineCover />
     </QueryClientProvider>
   );
+}
+
+/** With the server, nothing works offline: cover the app with the No-internet page (the demo data on the phone needs no internet). */
+function OfflineCover() {
+  const offline = useOffline();
+  return API_URL && offline ? <NoInternet /> : null;
 }
 
 /**

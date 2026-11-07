@@ -95,9 +95,9 @@ cd web
 npm install
 npm run dev
 
-# Mobile app – dev server for a dev build. Set EXPO_PUBLIC_API_URL to use the backend, e.g.
+# Mobile app – dev server for a dev build. Uses the live API (app/.env); override in app/.env.local, e.g.
 # EXPO_PUBLIC_API_URL=http://192.168.1.20:4000 (the computer's address on the Wi-Fi – a phone cannot reach
-# "localhost"); without it the app runs on built-in sample data saved on the phone
+# "localhost"), or EXPO_PUBLIC_API_URL= (empty) for built-in sample data saved on the phone
 cd app
 npm install
 npm start
@@ -112,9 +112,10 @@ cd app
 npm run build:apk        # -> app/builds/roopawas-seva-<version>.apk (arm64-v8a)
 ```
 
-The APK uses the backend whose address is in `EXPO_PUBLIC_API_URL` when it is built (for example
-`EXPO_PUBLIC_API_URL=http://192.168.1.20:4000 npm run build:apk`). Built without it, it is a self-contained
-demo on sample data stored on the phone (everything except Village Yojnas, which need the server).
+The APK uses the backend whose address is in `EXPO_PUBLIC_API_URL` when it is built: `https://api.roopawas.in`
+from `app/.env`, unless `app/.env.local` overrides it. Built with it empty, it is a self-contained demo on sample
+data stored on the phone (everything except Village Yojnas, which need the server). With a server, the app shows a
+*No internet connection* page while the phone is offline and continues by itself when the connection returns.
 
 The APK is signed with the debug key, so it can be installed on demo phones but not uploaded to
 the Play Store. See [`app/README.md`](app/README.md) for details, including a Windows path-length

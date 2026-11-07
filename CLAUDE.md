@@ -55,8 +55,9 @@ browser (localStorage); the server implements the same contract. `web/src/store.
 language and the session (token + user).
 
 **App data flow:** the same as the website: screens → `app/src/api/hooks.ts` → the `Api` interface.
-`EXPO_PUBLIC_API_URL` (set when starting or building the app) uses the server through `app/src/api/http.ts`;
-without it the app runs on `app/src/api/mock.ts`, a copy of the website's mock that saves to AsyncStorage, so
+`EXPO_PUBLIC_API_URL` (from `app/.env`, committed: the live `https://api.roopawas.in`; override in `app/.env.local`)
+uses the server through `app/src/api/http.ts`, and then `app/src/net.ts` covers the app with a No-internet page while
+offline; set empty, the app runs on `app/src/api/mock.ts`, a copy of the website's mock that saves to AsyncStorage, so
 the demo APK works offline (Village Yojnas then say they need the server). The app reaches `../shared` through
 `metro.config.js` (`watchFolders`) and the `@shared/*` path in its `tsconfig.json`. When a website feature
 changes, change the app's screen too; a change to `web/src/api/mock.ts`, `http.ts` or `hooks.ts` usually needs

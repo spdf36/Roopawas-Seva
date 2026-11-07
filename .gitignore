@@ -36,6 +36,8 @@ GoogleService-Info.plist
 # Environment files
 .env
 .env*.local
+# The app's .env holds only public EXPO_PUBLIC_* values (the live API address), so it is shared.
+!app/.env
 
 # Photos uploaded to a locally running server (server/.env UPLOADS_DIR)
 server/uploads/
